@@ -1,4 +1,4 @@
-# PracticeOnTensorFlow
+# PracticeOnTensorflow
 
 Tensorflow 练习Demo
 
