@@ -10,15 +10,13 @@ class TrainingGraph(object):
     # placeholder for local data
     # img_local_h = tf.placeholder("float32", [None, 28, 28, 3])
     # lab_local_h = tf.placeholder("int32", [None])
-    # channel of img ,  the value is 3 for RGB, 1 for gray
-    channels = 3
+
     # keep_prob of dropout in model
     keep_prob = 1
     classNum = 10
     pass
 
-    def __init__(self, channels, keep_prob, classNum):
-        self.channels = channels
+    def __init__(self, keep_prob, classNum):
         self.keep_prob = keep_prob
         self.classNum = classNum
 
@@ -48,7 +46,7 @@ class TrainingGraph(object):
         :return: graph of train_step and accuracy
         """
         # calculate the loss from model output
-        cnn_model = model.ModelOfCNN(channels=self.channels, classNum=self.classNum)
+        cnn_model = model.ModelOfCNN(classNum=self.classNum)
         logits = cnn_model.output_cnn(img_batch, keep_prob=self.keep_prob)
         loss = self.get_loss(logits=logits, labels=lab_batch)
         # build a train graph
