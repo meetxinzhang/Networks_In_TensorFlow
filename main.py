@@ -11,9 +11,9 @@ import args_manager as am
 session = tf.InteractiveSession()
 
 # --------------------------------- build a graph -- start ---------------------------
-args = am.ArgumentManager("model_save/cnn.ckpt", session)
+args = am.ArgumentManager(session, skip_layer=[])
 
-input_data = ild.InputLocalData('local_data/')
+input_data = ild.InputLocalData('local_data/alexnet_data/')
 img_batch, lab_batch = input_data.get_batches(resize_w=28, resize_h=28,
                                               batch_size=5, capacity=20)
 
@@ -22,13 +22,12 @@ train_step, acc = graph.build_graph_with_batch(img_batch, lab_batch)
 
 
 # --------------------------------- init all variables -------------------------------
-ys = input("attention!!!\n    restore the variables? (y/n)\n")
-if ys == 'y':
-    args.restore()
-else:
-    init = tf.global_variables_initializer()
-    session.run(init)
-
+ys = input("attention!!!\n restore the variables from ?\n  1-my_data\n  alexNet-2\n  n-no")
+switch = {
+    '1': args.restore(),
+    '2': args.load_initial_weights(),
+}
+switch.get(ys, args.train())
 
 # --------------------------------- calculate the graph ------------------------------
 coord = tf.train.Coordinator()

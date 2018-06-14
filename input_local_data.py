@@ -31,10 +31,10 @@ class InputLocalData(object):
                 img_list.append(self.file_dir + train_class + '/' + pic)
                 label_list.append(train_class)
         temp = np.array([img_list, label_list])
+        # 矩阵转置，将数据按行排列，一行一个样本，image位于第一维，label位于第二维
         temp = temp.transpose()
-        # shuffle the samples
+        # 随机打乱顺序
         np.random.shuffle(temp)
-        # after transpose, images is in dimension 0 and label in dimension 1
         self.image_list = list(temp[:, 0])
         self.label_list = list(temp[:, 1])
 
