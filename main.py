@@ -10,20 +10,18 @@ import args_manager as am
 
 session = tf.InteractiveSession()
 
-# --------------------------------- build a graph -- start -------------------------------
-
+# --------------------------------- build a graph -- start ---------------------------
 args = am.ArgumentManager("model_save/cnn.ckpt", session)
 
 input_data = ild.InputLocalData('local_data/')
 img_batch, lab_batch = input_data.get_batches(resize_w=28, resize_h=28,
                                               batch_size=5, capacity=20)
 
-graph = tg.TrainingGraph(channels=3, keep_prob=1, classNum=10)
+graph = tg.TrainingGraph(keep_prob=1, class_num=10)
 train_step, acc = graph.build_graph_with_batch(img_batch, lab_batch)
 
-# --------------------------------- build a graph -- end -------------------------------
 
-# init all variables
+# --------------------------------- init all variables -------------------------------
 ys = input("attention!!!\n    restore the variables? (y/n)\n")
 if ys == 'y':
     args.restore()
@@ -31,7 +29,8 @@ else:
     init = tf.global_variables_initializer()
     session.run(init)
 
-# --------------------------------- calculate the graph -- start -------------------------------
+
+# --------------------------------- calculate the graph ------------------------------
 coord = tf.train.Coordinator()
 threads = tf.train.start_queue_runners(sess=session, coord=coord)
 try:
@@ -48,4 +47,4 @@ except tf.errors.OutOfRangeError:
 finally:
     coord.request_stop()
 coord.join(threads)
-# --------------------------------- calculate the graph -- end -------------------------------
+

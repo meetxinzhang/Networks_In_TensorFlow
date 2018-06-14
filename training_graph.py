@@ -13,12 +13,12 @@ class TrainingGraph(object):
 
     # keep_prob of dropout in model
     keep_prob = 1
-    classNum = 10
+    class_num = 10
     pass
 
-    def __init__(self, keep_prob, classNum):
+    def __init__(self, keep_prob, class_num):
         self.keep_prob = keep_prob
-        self.classNum = classNum
+        self.class_num = class_num
 
         # self.img_local_h = tf.reshape(self.img_local_h, [-1, 28, 28, channels])
         pass
@@ -46,8 +46,8 @@ class TrainingGraph(object):
         :return: graph of train_step and accuracy
         """
         # calculate the loss from model output
-        cnn_model = model.ModelOfCNN(classNum=self.classNum)
-        logits = cnn_model.output_cnn(img_batch, keep_prob=self.keep_prob)
+        cnn_model = model.ModelOfCNN(keep_prob=self.keep_prob, class_num=self.class_num)
+        logits = cnn_model.output_cnn(img_batch)
         loss = self.get_loss(logits=logits, labels=lab_batch)
         # build a train graph
         train_step = tf.train.AdamOptimizer(1e-4).minimize(loss)

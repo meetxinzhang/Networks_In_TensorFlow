@@ -7,109 +7,169 @@ import numpy as np
 
 class ModelOfCNN(object):
 
-    channels = 3
-    classNum = 10
+    class_num = 10
+    keep_prob = 1
     pass
 
-    def __init__(self, classNum):
-        self.classNum = classNum
+    def __init__(self, class_num, keep_prob):
+        self.class_num = class_num
+        self.keep_prob = keep_prob
 
-    def weight_variable(self, shape):
+    def weight_variable(self, name, shape):
         """
         give weight a value from normal distribution
         :param shape: represent a convolution kernel
         :return: weight_variable
         """
         initial = tf.truncated_normal(shape=shape, stddev=0.01, dtype="float")
-        return tf.Variable(initial)
+        return tf.Variable(initial, name=name)
 
-    def bias_variable(self, shape):
+    def bias_variable(self, name, shape):
+        """
+        give bias a value from normal distribution
+        :param name:
+        :param shape:
+        :return:
+        """
         # give biases a value
         initial = tf.constant(0.1, shape=shape, dtype="float")
-        return tf.Variable(initial)
+        return tf.Variable(initial, name=name)
 
-    def conv_layer(self, x, kh, kw, channels, kn):
-        # convolution
-        w = self.weight_variable(shape=[kh, kw, channels, kn])
-        b = self.bias_variable(shape=[kn])
+    # def conv_layer(self, x, kh, kw, channels, kn):
+    #     # convolution
+    #     w = self.weight_variable(shape=[kh, kw, channels, kn])
+    #     b = self.bias_variable(shape=[kn])
+    #
+    #     x = tf.nn.conv2d(x, w, strides=[1, 1, 1, 1], padding="SAME")
+    #     x = tf.nn.bias_add(x, b)
+    #     return tf.nn.relu(x)
+    def conv_layer(self,  x, k_height, k_width, k_num, name, stride_x=1, stride_y=1, padding="SAME", groups=1):
+        """
+        卷积层，步长默认为1
+        """
+        channel = int(x.get_shape()[-1])
+        conv_operate = lambda x_item, w_item: tf.nn.conv2d(x_item, w_item, strides=[1, stride_x, stride_y, 1], padding=padding)
 
-        x = tf.nn.conv2d(x, w, strides=[1, 1, 1, 1], padding="SAME")
-        x = tf.nn.bias_add(x, b)
-        return tf.nn.relu(x)
+        with tf.variable_scope(name) as scope:
+            w = tf.get_variable("w", shape=[k_height, k_width, channel / groups, k_num])
+            b = tf.get_variable("b", shape=[k_num])
 
-    def pooling_layer(self, x):
-        # pooling
-        return tf.nn.max_pool(x, ksize=[1, 2, 2, 1],
-                              strides=[1, 2, 2, 1], padding="SAME")
+            x_new = tf.split(value=x, num_or_size_splits=groups, axis=3)
+            w_new = tf.split(value=w, num_or_size_splits=groups, axis=3)
 
-    def norm_layer(self, x, depth_radius):
-        return tf.nn.lrn(x, depth_radius=depth_radius, bias=1, alpha=0.001 / 9.0, beta=0.75)
-        # return tf.nn.local_response_normalization(x, depth_radius=depth_radius,
-        #                                           alpha=alpha,
-        #                                           beta=beta,
-        #                                           bias=bias,
-        #                                           name=None)
+            feature_map = [conv_operate(t1, t2) for t1, t2 in zip(x_new, w_new)]
+            merge_feature_map = tf.concat(axis=3, values=feature_map)
+            # print mergeFeatureMap.shape
+            out = tf.nn.bias_add(merge_feature_map, b)
+            return tf.nn.relu(tf.reshape(out, merge_feature_map.get_shape().as_list()), name=scope.name)
 
-    def fc_layer(self, x, in_dim, out_dim, keep_prob):
-        w = self.weight_variable(shape=[in_dim, out_dim])
-        b = self.bias_variable(shape=[out_dim])
+    def pooling_layer(self, x, name, filter_height=2, filter_width=2, stride_y=2, stride_x=2, padding='SAME'):
+        """
+        最大值池化层，默认为2*2 步长为2
+        """
+        return tf.nn.max_pool(x, ksize=[1, filter_height, filter_width, 1],
+                              strides=[1, stride_y, stride_x, 1],
+                              padding=padding, name=name)
 
-        x_temp = tf.reshape(x, [-1, w.get_shape().as_list()[0]])
-        hid_fcl = tf.nn.relu(tf.matmul(x_temp, w + b))
+    def norm_layer(self, x, name, radius=2, alpha=1e-04, beta=0.75, bias=1.0):
+        """
+        标准化层，执行局部相应归一化
+        """
+        return tf.nn.lrn(x, depth_radius=radius, bias=bias, alpha=alpha, beta=beta, name=name)
 
-        if keep_prob is None:
-            return hid_fcl
-        else:
-            hid_dropout = tf.nn.dropout(hid_fcl, keep_prob=keep_prob)
-            return hid_dropout
+    def fc_layer(self, x, in_dim, out_dim,  name,  keep_prob=None, relu_flag=True):
+        """
+        全连接层/输出层/Dropout层
+        :param x: 输入
+        :param in_dim: 输入维度
+        :param out_dim: 输出维度
+        :param name: 命名空间
+        :param keep_prob: dropout 层丢弃神经元的概率
+        :param relu_flag: 布尔值，是否应用神经元激活，输出层应为False
+        :return: 没有经过 softMax
+        """
+        with tf.variable_scope(name) as scope:
+            w = self.weight_variable('w', shape=[in_dim, out_dim])
+            b = self.bias_variable('b', shape=[out_dim])
 
-    def out_layer(self, x, in_dim, out_dim):
-        w = self.weight_variable(shape=[in_dim, out_dim])
-        b = self.bias_variable(shape=[out_dim])
+            x_temp = tf.reshape(x, [-1, w.get_shape().as_list()[0]])
 
-        return tf.add(tf.matmul(x, w), b)
+            act = tf.nn.xw_plus_b(x_temp, w, b, name=scope.name)
+            # tf.matmul(x_temp, w) + b
 
-    def output_cnn(self, images, keep_prob):
+            if relu_flag is False:
+                return act
+            else:
+                relu_value = tf.nn.relu(act, name=scope.name)
+                if keep_prob is None:
+                    return relu_value
+                else:
+                    return tf.nn.dropout(relu_value, keep_prob=keep_prob, name=scope.name)
+    # def out_layer(self, name, x, in_dim, out_dim):
+    #     with tf.variable_scope(name) as scope:
+    #         w = self.weight_variable(shape=[in_dim, out_dim])
+    #         b = self.bias_variable(shape=[out_dim])
+    #
+    #         return tf.add(tf.matmul(x, w), b)
+
+    def output_cnn(self, images):
         """
         model of CNN
-        :param images: input
-        :param keep_prob: Drop probability of fully connected layers
-        :return a tensor  of shape [batch_size, NUM_CLASSES]
+        :param images: 28*28*3
+        :return tensor shape=[batch_size, NUM_CLASSES] ,没有经过 softMax
         """
-        # Channels of img, for RGB image the value is 3
-        channels = np.int(np.shape(images)[-1])
-
         # convolution layer 1
-        hidden_conv1 = self.conv_layer(images, 5, 5, channels, 32)
-        hidden_pool1 = self.pooling_layer(hidden_conv1)
+        conv1 = self.conv_layer(images, 5, 5, 32, name='conv1')
+        pool1 = self.pooling_layer(conv1, name='pool1')
 
         # convolution layer 2
-        hidden_conv2 = self.conv_layer(hidden_pool1, 5, 5, 32, 64)
-        hidden_pool2 = self.pooling_layer(hidden_conv2)
+        conv2 = self.conv_layer(pool1, 5, 5, 64, name='conv2')
+        pool2 = self.pooling_layer(conv2, name='pool2')
 
         # connections
-        hid_fcl1 = self.fc_layer(hidden_pool2, 7*7*64, 1024, keep_prob)
+        fc1 = self.fc_layer(pool2, 7*7*64, 1024, keep_prob=self.keep_prob, name='fc1')
 
         # output layer without SoftMax
-        out = self.out_layer(hid_fcl1, 1024, self.classNum)
+        fc2 = self.fc_layer(fc1, 1024, self.class_num, relu_flag=False, name='fc2')
 
-        return out
+        return fc2
 
-    def output_alex_net(self, images, depth_radius):
-        # Channels of img, for RGB image the value is 3
-        channels = np.int(np.shape(images)[-1])
+    def output_alex_net(self, images):
+        """
+        AlexNet model
+        :param images: 227*227*3
+        :return: 没有经过 softMax, shape=[batch_size, NUM_CLASSES]
+        """
+        # 1st Layer: Conv (w ReLu) -> Lrn -> Pool
+        conv1 = self.conv_layer(images, 11, 11, 96, stride_x=4, stride_y=4, padding='VALID', name='conv1')
+        norm1 = self.norm_layer(conv1, name='norm1')
+        pool1 = self.pooling_layer(norm1, filter_height=3, filter_width=3, padding='VALID', name='pool1')
 
-        hid_conv1 = self.conv_layer(images, 3, 3, channels, 64)
-        hid_lrn1 = self.norm_layer(hid_conv1, depth_radius)
-        hid_pool1 = self.pooling_layer(hid_lrn1)
+        # 2nd Layer: Conv (w ReLu)  -> Lrn -> Pool with 2 groups
+        conv2 = self.conv_layer(pool1, 5, 5, 256, groups=2, name='conv2')
+        norm2 = self.norm_layer(conv2, name='norm2')
+        pool2 = self.pooling_layer(norm2, filter_height=3, filter_width=3, padding='VALID', name='pool2')
 
-        hid_conv2 = self.conv_layer(hid_pool1, 3, 3, 64, 128)
-        hid_lrn2 = self.norm_layer(hid_conv2, depth_radius)
-        hid_pool2 = self.pooling_layer(hid_lrn2)
+        # 3rd Layer: Conv (w ReLu)
+        conv3 = self.conv_layer(pool2, 3, 3, 384, name='conv3')
 
-        hid_fcl1 = self.fc_layer(hid_pool2, )
+        # 4th Layer: Conv (w ReLu) splitted into two groups
+        conv4 = self.conv_layer(conv3, 3, 3, 384, groups=2, name='conv4')
 
+        # 5th Layer: Conv (w ReLu) -> Pool splitted into two groups
+        conv5 = self.conv_layer(conv4, 3, 3, 256, groups=2, name='conv5')
+        pool5 = self.pooling_layer(conv5, filter_height=3, filter_width=3, padding='VALID', name='pool5')
 
+        # 6th Layer: Flatten -> FC (w ReLu) -> Dropout
+        flattened = tf.reshape(pool5, [-1, 6 * 6 * 256])
+        fc6 = self.fc_layer(flattened, 6 * 6 * 256, 4096, keep_prob=self.keep_prob, name='fc6')
 
+        # 7th Layer: FC (w ReLu) -> Dropout
+        fc7 = self.fc_layer(fc6, 4096, 4096, keep_prob=self.keep_prob, name='fc7')
+
+        # 8th Layer: FC and return unscaled activations
+        fc8 = self.fc_layer(fc7, 4096, self.class_num, relu_flag=False, name='fc8')
+
+        return fc8
 
 
