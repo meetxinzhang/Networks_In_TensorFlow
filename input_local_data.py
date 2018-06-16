@@ -9,74 +9,83 @@ import os
 class InputLocalData(object):
     file_dir = 'the local address of img folders'
 
-    image_list = []
-    label_list = []
+    # 文件名队列，详见 https://blog.csdn.net/dcrmg/article/details/79776876
+    file_name_queue = None
     pass
 
     def __init__(self, file_dir):
         self.file_dir = file_dir
         # get the data set into image_list and label_list
-        self.get_files()
+        self.get_files_name_queue()
     pass
 
-    def get_files(self):
+    def get_files_name_queue(self):
         """
-        scan the local file_dir to assemble image_list and label_list
+        获取文件名队列，放到内存里
         """
         img_list = []
-        label_list = []
+        lab_list = []
 
         for train_class in os.listdir(self.file_dir):
             for pic in os.listdir(self.file_dir + train_class):
                 img_list.append(self.file_dir + train_class + '/' + pic)
-                label_list.append(train_class)
-        temp = np.array([img_list, label_list])
+                lab_list.append(train_class)
+        temp = np.array([img_list, lab_list])
         # 矩阵转置，将数据按行排列，一行一个样本，image位于第一维，label位于第二维
         temp = temp.transpose()
         # 随机打乱顺序
         np.random.shuffle(temp)
-        self.image_list = list(temp[:, 0])
-        self.label_list = list(temp[:, 1])
+        image_list = list(temp[:, 0])
+        label_list = list(temp[:, 1])
 
-        self.label_list = [int(i) for i in self.label_list]
-        print("get the following numbers ：")
-        print(self.label_list)
+        label_list = [int(i) for i in label_list]
+        print("get the following labels ：")
+        print(label_list)
         # return image_list, label_list
+
+        # convert the list of images and labels to tensor
+        image_tensor = tf.cast(image_list, tf.string)
+        label_tensor = tf.cast(label_list, tf.int64)
+        # 这是创建 TensorFlow 的文件名队列，按照设定，每次从一个 tensor 列表中按顺序或者随机抽取出一个 tensor 放入文件名队列。
+        # 详见 https://blog.csdn.net/dcrmg/article/details/79776876
+        self.file_name_queue = tf.train.slice_input_producer([image_tensor, label_tensor])
     pass
 
     def get_batches(self, resize_w, resize_h, batch_size, capacity):
         """
-        get the batch of data to training
-        :param resize_w: wight of img
-        :param resize_h: height of img
-        :param batch_size: how many img in a batch
-        :param capacity:
-        :return: a batch of img and label
+        获取 图片和标签的 批次
+        :param resize_w: 图片宽
+        :param resize_h: 图片高
+        :param batch_size: 每个批次里的图片数量
+        :param capacity: 队列中的容量
+        :return:
         """
-        # convert the list of images and labels to tensor
-        image = tf.cast(self.image_list, tf.string)
-        label = tf.cast(self.label_list, tf.int64)
-        # ?
-        queue = tf.train.slice_input_producer([image, label])
-        label = queue[1]
-        # read img from file
-        image_c = tf.read_file(queue[0])
-        # png
+        # 获取标签
+        label = self.file_name_queue[1]
+        # 读取图像
+        image_c = tf.read_file(self.file_name_queue[0])
+        # 图像解码，不然得到的字符串
         image = tf.image.decode_jpeg(image_c, channels=3)
-        # resize to resize_w * resize_h
+        # 调整图像大小至 resize_w * resize_h，保持纵横比不变
+        # tf.image.resize_images 不能保证图像的纵横比,这样用来做抓取位姿的识别,可能受到影响
         image = tf.image.resize_image_with_crop_or_pad(image, resize_w, resize_h)
-        # (x - mean) / adjusted_stddev
-        # standardize the pixel deep
+        """
+        标准化图像的像素值，加速模型的训练
+        (x - mean) / adjusted_stddev
+        其中x为RGB三通道像素值，mean分别为三通道像素的均值，
+        adjusted_stddev = max(stddev, 1.0/sqrt(image.NumElements()))。
+        stddev为三通道像素的标准差，image.NumElements()计算的是三通道各自的像素个数。
+        """
         image = tf.image.per_image_standardization(image)
 
         image_batch, label_batch = tf.train.batch([image, label],
                                                   batch_size=batch_size,
                                                   num_threads=64,
                                                   capacity=capacity)
+        # 转换像素值的类型 tf.float32
+        image_batch2 = tf.cast(image_batch, tf.float32)
+        # label_batch = tf.reshape(label_batch, [batch_size])
 
-        images_batch = tf.cast(image_batch, tf.float32)
-        labels_batch = tf.reshape(label_batch, [batch_size])
-
-        return images_batch, labels_batch
+        return image_batch2, label_batch
     pass
 

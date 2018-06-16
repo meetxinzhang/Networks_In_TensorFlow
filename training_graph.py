@@ -47,6 +47,7 @@ class TrainingGraph(object):
         """
         # calculate the loss from model output
         cnn_model = model.ModelOfCNN(keep_prob=self.keep_prob, class_num=self.class_num)
+        # 详见 https://www.zhihu.com/question/60751553
         logits = cnn_model.output_cnn(img_batch)
         loss = self.get_loss(logits=logits, labels=lab_batch)
         # build a train graph
@@ -56,4 +57,4 @@ class TrainingGraph(object):
         accuracy = tf.cast(accuracy, tf.float16)
         accuracy = tf.reduce_mean(accuracy)
 
-        return train_step, accuracy
+        return train_step, logits, accuracy

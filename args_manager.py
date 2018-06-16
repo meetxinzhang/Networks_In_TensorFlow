@@ -12,7 +12,7 @@ class ArgumentManager(object):
         self.WEIGHTS_PATH = weights_path
         self.SKIP_LAYER = skip_layer
 
-    def train(self):
+    def init_all(self):
         init = tf.global_variables_initializer()
         self.session.run(init)
 
@@ -58,4 +58,3 @@ class ArgumentManager(object):
                         else:
                             var = tf.get_variable('w', trainable=False)
                             self.session.run(var.assign(data))
-pass

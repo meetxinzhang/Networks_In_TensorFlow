@@ -13,21 +13,21 @@ session = tf.InteractiveSession()
 # --------------------------------- build a graph -- start ---------------------------
 args = am.ArgumentManager(session, skip_layer=[])
 
-input_data = ild.InputLocalData('local_data/alexnet_data/')
+input_data = ild.InputLocalData('local_data/')
 img_batch, lab_batch = input_data.get_batches(resize_w=28, resize_h=28,
                                               batch_size=5, capacity=20)
 
 graph = tg.TrainingGraph(keep_prob=1, class_num=10)
-train_step, acc = graph.build_graph_with_batch(img_batch, lab_batch)
+train_step, logits, acc = graph.build_graph_with_batch(img_batch, lab_batch)
 
 
 # --------------------------------- init all variables -------------------------------
-ys = input("attention!!!\n restore the variables from ?\n  1-my_data\n  alexNet-2\n  n-no")
+ys = input("attention!!!\n restore the variables from ?\n  my_data-1\n  alexNet-2\n  no-n")
 switch = {
     '1': args.restore(),
     '2': args.load_initial_weights(),
 }
-switch.get(ys, args.train())
+switch.get(ys, default=args.init_all())
 
 # --------------------------------- calculate the graph ------------------------------
 coord = tf.train.Coordinator()
