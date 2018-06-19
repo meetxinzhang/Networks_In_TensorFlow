@@ -22,12 +22,14 @@ train_step, logits, acc = graph.build_graph_with_batch(img_batch, lab_batch)
 
 
 # --------------------------------- init all variables -------------------------------
-ys = input("attention!!!\n restore the variables from ?\n  my_data-1\n  alexNet-2\n  no-n")
-switch = {
-    '1': args.restore(),
-    '2': args.load_initial_weights(),
-}
-switch.get(ys, default=args.init_all())
+# ys = input("attention!!!\n restore the variables from ?\n  my_data-1\n  alexNet-2\n  no-n\n")
+# print(type(ys))
+# switch = {
+#     '1': args.restore(),
+#     '2': args.load_initial_weights(),
+# }
+# switch.get(ys, default=args.init_all())
+args.init_all()
 
 # --------------------------------- calculate the graph ------------------------------
 coord = tf.train.Coordinator()

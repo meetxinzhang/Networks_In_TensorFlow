@@ -3,8 +3,8 @@ import numpy as np
 
 
 class ArgumentManager(object):
-    # save_path = "the path to save model and restore from"
-    # session = None
+    MY_PATH = "the path to save model and restore from"
+    session = None
 
     def __init__(self, session, skip_layer, my_path='model_save/cnn.ckpt', weights_path='model_save/bvlc_alexnet.npy'):
         self.session = session
@@ -27,8 +27,14 @@ class ArgumentManager(object):
         """
         从本地恢复参数
         """
-        saver = tf.train.Saver()
-        saver.restore(self.session, self.MY_PATH)
+        try:
+            saver = tf.train.Saver()
+            saver.restore(self.session, self.MY_PATH)
+        except BaseException:
+            self.init_all()
+            print('本地 {} 参数异常！'.format(self.MY_PATH))
+        else:
+            print('从本地 {} 恢复参数成功'.format(self.MY_PATH))
 
     def load_initial_weights(self):
         """

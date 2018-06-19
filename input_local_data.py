@@ -73,7 +73,7 @@ class InputLocalData(object):
         标准化图像的像素值，加速模型的训练
         (x - mean) / adjusted_stddev
         其中x为RGB三通道像素值，mean分别为三通道像素的均值，
-        adjusted_stddev = max(stddev, 1.0/sqrt(image.NumElements()))。
+        adjusted_stddev = max(stddev, 1.0/sqrt(i mage.NumElements()))。
         stddev为三通道像素的标准差，image.NumElements()计算的是三通道各自的像素个数。
         """
         image = tf.image.per_image_standardization(image)
@@ -88,4 +88,3 @@ class InputLocalData(object):
 
         return image_batch2, label_batch
     pass
-

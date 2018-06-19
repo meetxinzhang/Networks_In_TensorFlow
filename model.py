@@ -15,25 +15,25 @@ class ModelOfCNN(object):
         self.class_num = class_num
         self.keep_prob = keep_prob
 
-    def weight_variable(self, name, shape):
-        """
-        give weight a value from normal distribution
-        :param shape: represent a convolution kernel
-        :return: weight_variable
-        """
-        initial = tf.truncated_normal(shape=shape, stddev=0.01, dtype="float")
-        return tf.Variable(initial, name=name)
-
-    def bias_variable(self, name, shape):
-        """
-        give bias a value from normal distribution
-        :param name:
-        :param shape:
-        :return:
-        """
-        # give biases a value
-        initial = tf.constant(0.1, shape=shape, dtype="float")
-        return tf.Variable(initial, name=name)
+    # def weight_variable(self, name, shape):
+    #     """
+    #     give weight a value from normal distribution
+    #     :param shape: represent a convolution kernel
+    #     :return: weight_variable
+    #     """
+    #     initial = tf.truncated_normal(shape=shape, stddev=0.01, dtype="float")
+    #     return tf.Variable(initial, name=name)
+    #
+    # def bias_variable(self, name, shape):
+    #     """
+    #     give bias a value from normal distribution
+    #     :param name:
+    #     :param shape:
+    #     :return:
+    #     """
+    #     # give biases a value
+    #     initial = tf.constant(0.1, shape=shape, dtype="float")
+    #     return tf.Variable(initial, name=name)
 
     # def conv_layer(self, x, kh, kw, channels, kn):
     #     # convolution
@@ -51,8 +51,8 @@ class ModelOfCNN(object):
         conv_operate = lambda x_item, w_item: tf.nn.conv2d(x_item, w_item, strides=[1, stride_x, stride_y, 1], padding=padding)
 
         with tf.variable_scope(name) as scope:
-            w = tf.get_variable("w", shape=[k_height, k_width, channel / groups, k_num])
-            b = tf.get_variable("b", shape=[k_num])
+            w = tf.get_variable('w', shape=[k_height, k_width, channel / groups, k_num])
+            b = tf.get_variable('b', shape=[k_num])
 
             x_new = tf.split(value=x, num_or_size_splits=groups, axis=3)
             w_new = tf.split(value=w, num_or_size_splits=groups, axis=3)
@@ -89,8 +89,8 @@ class ModelOfCNN(object):
         :return: 没有经过 softMax
         """
         with tf.variable_scope(name) as scope:
-            w = self.weight_variable('w', shape=[in_dim, out_dim])
-            b = self.bias_variable('b', shape=[out_dim])
+            w = tf.get_variable('w', shape=[in_dim, out_dim])
+            b = tf.get_variable('b', shape=[out_dim])
 
             x_temp = tf.reshape(x, [-1, w.get_shape().as_list()[0]])
 
