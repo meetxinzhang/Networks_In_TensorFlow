@@ -3,18 +3,22 @@
 """
 import tensorflow as tf
 import numpy as np
+from PIL import Image
 import os
 
 
 class InputLocalData(object):
-    file_dir = 'the local address of img folders'
+    train_file_dir = 'the address of train img folders'
+    test_file_dir = 'the address of test img folders'
 
     # 文件名队列，详见 https://blog.csdn.net/dcrmg/article/details/79776876
     file_name_queue = None
     pass
 
-    def __init__(self, file_dir):
-        self.file_dir = file_dir
+    def __init__(self, train_file_dir, test_file_dir):
+        self.train_file_dir = train_file_dir
+        self.test_file_dir = test_file_dir
+
         # get the data set into image_list and label_list
         self.get_files_name_queue()
     pass
@@ -26,9 +30,9 @@ class InputLocalData(object):
         img_list = []
         lab_list = []
 
-        for train_class in os.listdir(self.file_dir):
-            for pic in os.listdir(self.file_dir + train_class):
-                img_list.append(self.file_dir + train_class + '/' + pic)
+        for train_class in os.listdir(self.train_file_dir):
+            for pic in os.listdir(self.train_file_dir + train_class):
+                img_list.append(self.train_file_dir + train_class + '/' + pic)
                 lab_list.append(train_class)
         temp = np.array([img_list, lab_list])
         # 矩阵转置，将数据按行排列，一行一个样本，image位于第一维，label位于第二维
@@ -83,8 +87,43 @@ class InputLocalData(object):
                                                   num_threads=64,
                                                   capacity=capacity)
         # 转换像素值的类型 tf.float32
-        image_batch2 = tf.cast(image_batch, tf.float32)
+        image_batch2 = tf.cast(image_batch, dtype=tf.float32)
         # label_batch = tf.reshape(label_batch, [batch_size])
 
         return image_batch2, label_batch
+
+    def get_test_img_list(self, w, h):
+        test_img_list = []
+        for f in os.listdir(self.test_file_dir):
+            img = self.get_1img_array(self.test_file_dir + '/' + f, w, h)
+            test_img_list.append(img)
+
+        return test_img_list
+
+    def get_1img_array(self, file_name, w, h):
+        """
+        # 获取单张图片一维数组，tensorflow 的图片是一维数组，每一位代表像素深度
+        :param file_dir: 文件地址/文件名
+        :return: np.array
+        """
+        im = Image.open(file_name)
+        # 预览图片
+        # print(im.show())
+
+        # 剪切固定大小
+        img = im.resize((w, h), Image.ANTIALIAS)
+
+        #
+        gray_img = img.convert('L')
+
+        # 从tensor 对象转换为 python 数组
+        im_arr = np.array(gray_img)
+
+        # 转换成一维向量
+        # nm = im_arr.reshape((1, 784))
+
+        nm = im_arr.astype(np.float32)
+        nm = np.multiply(nm, 1.0 / 255.0)
+
+        return nm
     pass
