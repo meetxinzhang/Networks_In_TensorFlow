@@ -12,22 +12,20 @@ import cv2
 
 session = tf.InteractiveSession()
 
-# --------------------------------- build a graph -- start ---------------------------
+# --------------------------------- build a graph ---------------------------
 args = am.ArgumentManager(session, skip_layer=[])
 
-input_data = ild.InputLocalData(train_file_dir='local_data/', test_file_dir='local_data/1')
-img_batch, lab_batch = input_data.get_batches(resize_w=28, resize_h=28,
-                                              batch_size=5, capacity=20)
+input_data = ild.InputLocalData(train_file_dir='local_data/', test_file_dir='alexnet_data/')
+# img_batch, lab_batch = input_data.get_batches(resize_w=28, resize_h=28,
+#                                               batch_size=5, capacity=20)
+test_data_list = input_data.get_test_img_list(w=227, h=227)
 
-graph = tg.TrainingGraph(keep_prob=1, class_num=10)
-# train_step, logits, acc = graph.build_graph_with_batch(img_batch, lab_batch)
+graph = tg.TrainingGraph(keep_prob=1, class_num=1000)
+# train_step, logits, acc = graph.build_graph(img_batch, lab_batch)
 
-img_ph = tf.placeholder(shape=[1, 28, 28, 1], dtype=tf.float32)
-_, test_logits, _ = graph.build_graph_with_batch(img_ph, None)
+img_ph = tf.placeholder(shape=[1, 227, 227, 3], dtype=tf.float32)
+_, test_logits, _ = graph.build_graph(img_ph, None)
 test_softmax = tf.nn.softmax(test_logits)
-
-# for i, img in enumerate(test_data):
-#     _, logits, _ = graph.build_graph_with_batch(img, None)
 
 
 # --------------------------------- init all variables -------------------------------
@@ -38,7 +36,7 @@ test_softmax = tf.nn.softmax(test_logits)
 #     '2': args.load_initial_weights(),
 # }
 # switch.get(ys, default=args.init_all())
-args.init_all()
+args.load_initial_weights()
 
 # --------------------------------- calculate the graph ------------------------------
 # coord = tf.train.Coordinator()
@@ -61,15 +59,20 @@ args.init_all()
 """
 图像识别的 demo
 """
-test_data = input_data.get_test_img_list(w=28, h=28)
+for i, img in enumerate(test_data_list):
+    # 标准化，这里不建议使用 tf.image.per_image_standardization ，因为它得到的是 tensor 对象,
+    # 将其完美转化为 ndarray 对象需要在 sess 里运行.
+    test = cv2.resize(img.astype(np.float32), (227, 227))
+    # img_mean = np.array([104, 117, 124], np.float32)
+    # test = test - img_mean  # 去均值
+    img_arr = test.reshape([1, 227, 227, 3])
 
-for i, img in enumerate(test_data):
-    img = img.reshape([1, 28, 28, 1])
-    maxx = np.argmax(session.run(test_softmax, feed_dict={img_ph: img}))
+    maxx = np.argmax(session.run(test_softmax, feed_dict={img_ph: img_arr}))
     print('the result is ', maxx)
-    # res = caffe_classes.class_names[maxx]  # 取概率最大类的下标
-    # # print(res)
-    # font = cv2.FONT_HERSHEY_SIMPLEX
-    # cv2.putText(img, res, (int(img.shape[0] / 3), int(img.shape[1] / 3)), font, 1, (0, 255, 0), 2)  # 绘制类的名字
-    # cv2.imshow("demo", img)
-    # cv2.waitKey(5000)
+    res = caffe_classes.class_names[maxx]  # 取概率最大类的下标
+    # print(res)
+    font = cv2.FONT_HERSHEY_SIMPLEX
+    # 绘制类的名字
+    cv2.putText(img, res, (int(img.shape[0] / 3), int(img.shape[1] / 3)), font, 1, (0, 255, 0), 2)
+    cv2.imshow("demo", img)
+    cv2.waitKey(5000)

@@ -3,8 +3,6 @@ import numpy as np
 
 
 class ArgumentManager(object):
-    MY_PATH = "the path to save model and restore from"
-    session = None
 
     def __init__(self, session, skip_layer, my_path='model_save/cnn.ckpt', weights_path='model_save/bvlc_alexnet.npy'):
         self.session = session
@@ -55,12 +53,11 @@ class ArgumentManager(object):
                     # Assign weights/biases to their corresponding tf variable
                     for data in weights_dict[op_name]:
 
-                        # Biases
                         if len(data.shape) == 1:
+                            # Biases
                             var = tf.get_variable('b', trainable=False)
                             self.session.run(var.assign(data))
-
-                        # Weights
                         else:
+                            # Weights
                             var = tf.get_variable('w', trainable=False)
                             self.session.run(var.assign(data))

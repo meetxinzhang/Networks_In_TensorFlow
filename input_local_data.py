@@ -4,6 +4,7 @@
 import tensorflow as tf
 import numpy as np
 from PIL import Image
+import cv2
 import os
 
 
@@ -43,9 +44,8 @@ class InputLocalData(object):
         label_list = list(temp[:, 1])
 
         label_list = [int(i) for i in label_list]
-        print("get the following labels ：")
-        print(label_list)
-        # return image_list, label_list
+        # print("get the following labels ：")
+        # print(label_list)
 
         # convert the list of images and labels to tensor
         image_tensor = tf.cast(image_list, tf.string)
@@ -66,6 +66,10 @@ class InputLocalData(object):
         """
         # 获取标签
         label = self.file_name_queue[1]
+        """
+        ToDO:独热编码
+        """
+
         # 读取图像
         image_c = tf.read_file(self.file_name_queue[0])
         # 图像解码，不然得到的字符串
@@ -95,35 +99,9 @@ class InputLocalData(object):
     def get_test_img_list(self, w, h):
         test_img_list = []
         for f in os.listdir(self.test_file_dir):
-            img = self.get_1img_array(self.test_file_dir + '/' + f, w, h)
+            # <class 'numpy.ndarray'>
+            img = cv2.imread(self.test_file_dir + f)
             test_img_list.append(img)
 
         return test_img_list
 
-    def get_1img_array(self, file_name, w, h):
-        """
-        # 获取单张图片一维数组，tensorflow 的图片是一维数组，每一位代表像素深度
-        :param file_dir: 文件地址/文件名
-        :return: np.array
-        """
-        im = Image.open(file_name)
-        # 预览图片
-        # print(im.show())
-
-        # 剪切固定大小
-        img = im.resize((w, h), Image.ANTIALIAS)
-
-        #
-        gray_img = img.convert('L')
-
-        # 从tensor 对象转换为 python 数组
-        im_arr = np.array(gray_img)
-
-        # 转换成一维向量
-        # nm = im_arr.reshape((1, 784))
-
-        nm = im_arr.astype(np.float32)
-        nm = np.multiply(nm, 1.0 / 255.0)
-
-        return nm
-    pass

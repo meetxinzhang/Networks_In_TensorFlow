@@ -71,7 +71,7 @@ class ModelOfCNN(object):
                               strides=[1, stride_y, stride_x, 1],
                               padding=padding, name=name)
 
-    def norm_layer(self, x, name, radius=2, alpha=1e-04, beta=0.75, bias=1.0):
+    def norm_layer(self, x, name, radius=2, alpha=2e-05, beta=0.75, bias=1.0):
         """
         标准化层，执行局部相应归一化
         """
@@ -168,8 +168,6 @@ class ModelOfCNN(object):
         fc7 = self.fc_layer(fc6, 4096, 4096, keep_prob=self.keep_prob, name='fc7')
 
         # 8th Layer: FC and return unscaled activations
-        fc8 = self.fc_layer(fc7, 4096, self.class_num, relu_flag=False, name='fc8')
+        fc8 = self.fc_layer(fc7, 4096, self.class_num, name='fc8')
 
         return fc8
-
-

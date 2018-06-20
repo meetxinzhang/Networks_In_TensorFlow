@@ -39,16 +39,17 @@ class TrainingGraph(object):
         loss = tf.reduce_mean(cross_entropy)
         return loss
 
-    def build_graph_with_batch(self, img_batch, lab_batch):
+    def build_graph(self, img_batch, lab_batch):
         """
-        logits: tensor, shape=[batch_size, NUM_CLASSES]
-        labels: tensor, shape=[batch_size], 当 lab_batch=None 时，表示预测过程，返回 logits 图节点
+        img_batch: tensor, shape=[batch_size, NUM_CLASSES]
+        lab_batch: tensor, shape=[batch_size], 当 lab_batch=None 时，表示预测过程，返回 logits 图节点
         :return: train_step, logits, accuracy
         """
         # calculate the loss from model output
         cnn_model = model.ModelOfCNN(keep_prob=self.keep_prob, class_num=self.class_num)
         # 详见 https://www.zhihu.com/question/60751553
-        logits = cnn_model.output_cnn(img_batch)
+        # logits = cnn_model.output_cnn(img_batch)
+        logits = cnn_model.output_alex_net(img_batch)
 
         if lab_batch is not None:
             loss = self.get_loss(logits=logits, labels=lab_batch)
