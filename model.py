@@ -168,6 +168,6 @@ class ModelOfCNN(object):
         fc7 = self.fc_layer(fc6, 4096, 4096, keep_prob=self.keep_prob, name='fc7')
 
         # 8th Layer: FC and return unscaled activations
-        fc8 = self.fc_layer(fc7, 4096, self.class_num, name='fc8')
+        fc8 = self.fc_layer(fc7, 4096, self.class_num, relu_flag=False, name='fc8')
 
         return fc8

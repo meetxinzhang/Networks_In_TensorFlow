@@ -16,9 +16,10 @@ class InputLocalData(object):
     file_name_queue = None
     pass
 
-    def __init__(self, train_file_dir, test_file_dir):
+    def __init__(self, train_file_dir, test_file_dir, class_num):
         self.train_file_dir = train_file_dir
         self.test_file_dir = test_file_dir
+        self.class_num = class_num
 
         # get the data set into image_list and label_list
         self.get_files_name_queue()
@@ -68,9 +69,12 @@ class InputLocalData(object):
         label = self.file_name_queue[1]
         """
         ToDO:独热编码
+        :param indices: 待编码的下标数据,  is a scalar the output shape will be a vector of length
+        :param depth: 深度，指的是类别数
+        :param axis: 按行0列1方向
         """
-
-        # 读取图像
+        one_hot_label = tf.one_hot(indices=label, depth=self.class_num, axis=0, on_value=1, off_value=0)
+        # 获取图像
         image_c = tf.read_file(self.file_name_queue[0])
         # 图像解码，不然得到的字符串
         image = tf.image.decode_jpeg(image_c, channels=3)
@@ -86,7 +90,7 @@ class InputLocalData(object):
         """
         image = tf.image.per_image_standardization(image)
 
-        image_batch, label_batch = tf.train.batch([image, label],
+        image_batch, label_batch = tf.train.batch([image, one_hot_label],
                                                   batch_size=batch_size,
                                                   num_threads=64,
                                                   capacity=capacity)
