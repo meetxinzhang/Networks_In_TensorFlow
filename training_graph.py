@@ -7,20 +7,10 @@ import tensorflow as tf
 
 
 class TrainingGraph(object):
-    # placeholder for local data
-    # img_local_h = tf.placeholder("float32", [None, 28, 28, 3])
-    # lab_local_h = tf.placeholder("int32", [None])
-
-    # keep_prob of dropout in model
-    keep_prob = 1
-    class_num = 10
-    pass
 
     def __init__(self, keep_prob=1, class_num=1000):
         self.keep_prob = keep_prob
         self.class_num = class_num
-
-        # self.img_local_h = tf.reshape(self.img_local_h, [-1, 28, 28, channels])
         pass
 
     def get_loss(self, logits, labels):
@@ -34,8 +24,8 @@ class TrainingGraph(object):
             cross_entropy
         go to https://www.jianshu.com/p/fb119d0ff6a6 learn more
         """
-        cross_entropy = tf.nn.sparse_softmax_cross_entropy_with_logits(labels=labels, logits=logits)
-        # cross_entropy = tf.nn.softmax_cross_entropy_with_logits(logits=logits, labels=labels)
+        # 如果没用独热编码用这个函数
+        cross_entropy = tf.nn.sparse_softmax_cross_entropy_with_logits(logits=logits, labels=tf.argmax(labels, axis=1))
         loss = tf.reduce_mean(cross_entropy)
         return loss
 
@@ -56,8 +46,9 @@ class TrainingGraph(object):
             # build a train graph
             train_step = tf.train.AdamOptimizer(1e-4).minimize(loss)
             # build a accuracy graph
-            accuracy = tf.nn.in_top_k(logits, lab_batch, 1)
-            accuracy = tf.cast(accuracy, tf.float16)
+            # 如果没用独热编码，不必使用 argmax
+            accuracy = tf.nn.in_top_k(logits, tf.argmax(lab_batch, axis=1), 1)
+            accuracy = tf.cast(accuracy, tf.float32)
             accuracy = tf.reduce_mean(accuracy)
         else:
             train_step = None

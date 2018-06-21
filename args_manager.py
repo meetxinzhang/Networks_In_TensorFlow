@@ -4,7 +4,8 @@ import numpy as np
 
 class ArgumentManager(object):
 
-    def __init__(self, session, skip_layer, my_path='model_save/cnn.ckpt', weights_path='model_save/bvlc_alexnet.npy'):
+    def __init__(self, session, skip_layer, my_path='model_save/cnn.ckpt',
+                 weights_path='model_save/bvlc_alexnet.npy'):
         self.session = session
         self.MY_PATH = my_path
         self.WEIGHTS_PATH = weights_path
@@ -34,11 +35,15 @@ class ArgumentManager(object):
         else:
             print('从本地 {} 恢复参数成功'.format(self.MY_PATH))
 
-    def load_initial_weights(self):
+    def initial_from_bvlc_alexnet(self):
         """
         迁移学习，初始化权值
         :param session: 会话对象
         """
+        # 先初始化所有变量，防止有变量未被修改到
+        self.init_all()
+
+        # 再修改特定的变量
         # Load the weights into memory
         weights_dict = np.load(self.WEIGHTS_PATH, encoding='bytes').item()
 

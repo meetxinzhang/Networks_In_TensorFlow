@@ -42,12 +42,20 @@ class InputLocalData(object):
         label_list = list(temp[:, 1])
 
         label_list = [int(i) for i in label_list]
-        # print("get the following labels ：")
-        # print(label_list)
+        print("get the following labels ：")
+        print(label_list)
+
+        """
+        独热编码，这里其实没必要, 因为在计算交叉熵和准确率的时候又要变回来(training_graph.py第39,61行), 但为了学习下还是使用了.
+        :param indices: 待编码的下标数据,  is a scalar the output shape will be a vector of length
+        :param depth: 深度，指的是类别数
+        :param axis: 按行1列0方向
+        """
+        one_hot_label = tf.one_hot(indices=label_list, depth=self.class_num, axis=1, on_value=1, off_value=0, dtype=tf.int32)
 
         # convert the list of images and labels to tensor
         image_tensor = tf.cast(image_list, tf.string)
-        label_tensor = tf.cast(label_list, tf.int64)
+        label_tensor = tf.cast(one_hot_label, tf.int64)
         # 这是创建 TensorFlow 的文件名队列，按照设定，每次从一个 tensor 列表中按顺序或者随机抽取出一个 tensor 放入文件名队列。
         # 详见 https://blog.csdn.net/dcrmg/article/details/79776876
         self.file_name_queue = tf.train.slice_input_producer([image_tensor, label_tensor])
@@ -64,13 +72,7 @@ class InputLocalData(object):
         """
         # 获取标签
         label = self.file_name_queue[1]
-        """
-        ToDO:独热编码
-        :param indices: 待编码的下标数据,  is a scalar the output shape will be a vector of length
-        :param depth: 深度，指的是类别数
-        :param axis: 按行0列1方向
-        """
-        one_hot_label = tf.one_hot(indices=label, depth=self.class_num, axis=0, on_value=1, off_value=0)
+
         # 获取图像
         image_c = tf.read_file(self.file_name_queue[0])
         # 图像解码，不然得到的字符串
@@ -87,7 +89,7 @@ class InputLocalData(object):
         """
         image = tf.image.per_image_standardization(image)
 
-        image_batch, label_batch = tf.train.batch([image, one_hot_label],
+        image_batch, label_batch = tf.train.batch([image, label],
                                                   batch_size=batch_size,
                                                   num_threads=64,
                                                   capacity=capacity)
@@ -97,7 +99,7 @@ class InputLocalData(object):
 
         return image_batch2, label_batch
 
-    def get_test_img_list(self, w, h):
+    def get_test_img_list(self):
         test_img_list = []
         for f in os.listdir(self.test_file_dir):
             # <class 'numpy.ndarray'>
