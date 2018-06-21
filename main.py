@@ -16,7 +16,7 @@ session = tf.InteractiveSession()
 args = am.ArgumentManager(session, skip_layer=[])
 
 input_data = ild.InputLocalData(train_file_dir='local_data/',
-                                test_file_dir='alexnet_data/', class_num=1000)
+                                test_file_dir='alexnet_data/', num_class=1000, num_epochs=3)
 # 训练和测试用的批量本地数据
 img_batch, lab_batch = input_data.get_batches(resize_w=227, resize_h=227,
                                               batch_size=3, capacity=20)
@@ -74,7 +74,6 @@ if choice is '1':
         coord.request_stop()
     coord.join(threads)
 
-    args.save()
 else:
     """
     图像识别的 demo

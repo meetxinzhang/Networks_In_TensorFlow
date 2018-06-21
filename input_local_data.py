@@ -10,14 +10,15 @@ import os
 
 class InputLocalData(object):
 
-    def __init__(self, train_file_dir, test_file_dir, class_num):
+    def __init__(self, train_file_dir, test_file_dir, num_class, num_epochs=None):
         # 训练和测试数据所在文件夹，/ 结尾
         self.train_file_dir = train_file_dir
         # 识别 demo 数据所在文件夹，/ 结尾
         self.test_file_dir = test_file_dir
         # 类别数
-        self.class_num = class_num
-
+        self.num_class = num_class
+        # 训练和测试数据 循环次数
+        self.num_epochs = num_epochs
         # 文件名队列，详见 https://blog.csdn.net/dcrmg/article/details/79776876
         self.get_files_name_queue()
     pass
@@ -51,14 +52,14 @@ class InputLocalData(object):
         :param depth: 深度，指的是类别数
         :param axis: 按行1列0方向
         """
-        one_hot_label = tf.one_hot(indices=label_list, depth=self.class_num, axis=1, on_value=1, off_value=0, dtype=tf.int32)
+        one_hot_label = tf.one_hot(indices=label_list, depth=self.num_class, axis=1, on_value=1, off_value=0, dtype=tf.int32)
 
         # convert the list of images and labels to tensor
         image_tensor = tf.cast(image_list, tf.string)
         label_tensor = tf.cast(one_hot_label, tf.int64)
         # 这是创建 TensorFlow 的文件名队列，按照设定，每次从一个 tensor 列表中按顺序或者随机抽取出一个 tensor 放入文件名队列。
         # 详见 https://blog.csdn.net/dcrmg/article/details/79776876
-        self.file_name_queue = tf.train.slice_input_producer([image_tensor, label_tensor])
+        self.file_name_queue = tf.train.slice_input_producer([image_tensor, label_tensor], num_epochs=self.num_epochs)
     pass
 
     def get_batches(self, resize_w, resize_h, batch_size, capacity):
