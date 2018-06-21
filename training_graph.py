@@ -16,7 +16,7 @@ class TrainingGraph(object):
     class_num = 10
     pass
 
-    def __init__(self, keep_prob, class_num):
+    def __init__(self, keep_prob=1, class_num=1000):
         self.keep_prob = keep_prob
         self.class_num = class_num
 

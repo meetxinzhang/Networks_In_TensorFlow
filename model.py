@@ -7,11 +7,7 @@ import numpy as np
 
 class ModelOfCNN(object):
 
-    class_num = 10
-    keep_prob = 1
-    pass
-
-    def __init__(self, class_num, keep_prob):
+    def __init__(self, class_num=1000, keep_prob=1):
         self.class_num = class_num
         self.keep_prob = keep_prob
 

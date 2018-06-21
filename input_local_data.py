@@ -9,19 +9,16 @@ import os
 
 
 class InputLocalData(object):
-    train_file_dir = 'the address of train img folders'
-    test_file_dir = 'the address of mnist_test img folders'
-
-    # 文件名队列，详见 https://blog.csdn.net/dcrmg/article/details/79776876
-    file_name_queue = None
-    pass
 
     def __init__(self, train_file_dir, test_file_dir, class_num):
+        # 训练和测试数据所在文件夹，/ 结尾
         self.train_file_dir = train_file_dir
+        # 识别 demo 数据所在文件夹，/ 结尾
         self.test_file_dir = test_file_dir
+        # 类别数
         self.class_num = class_num
 
-        # get the data set into image_list and label_list
+        # 文件名队列，详见 https://blog.csdn.net/dcrmg/article/details/79776876
         self.get_files_name_queue()
     pass
 
