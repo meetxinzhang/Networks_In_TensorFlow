@@ -1,2 +1,5 @@
 .idea/*
-.__pycache__/*
+__pycache__/*
+*.pyc
+model_save/*
+mnist_test/MNIST_data/*
