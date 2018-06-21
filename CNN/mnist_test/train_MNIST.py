@@ -3,8 +3,7 @@ import os
 import numpy as np
 import tensorflow as tf
 from mnist_test import input_data
-import input_local_data as ild
-
+from CNN import input_local_data as ild
 
 session = tf.InteractiveSession()
 

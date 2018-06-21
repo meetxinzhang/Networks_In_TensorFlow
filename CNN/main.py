@@ -4,10 +4,7 @@
 """
 import numpy as np
 import tensorflow as tf
-import input_local_data as ild
-import training_graph as tg
-import args_manager as am
-import caffe_classes
+from CNN import training_graph as tg, args_manager as am, input_local_data as ild, caffe_classes
 import cv2
 
 session = tf.InteractiveSession()

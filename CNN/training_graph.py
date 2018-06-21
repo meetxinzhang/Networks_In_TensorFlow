@@ -2,7 +2,7 @@
 训练与评估类
 构建 TensorFlow 数据流图
 """
-import model
+from CNN import model
 import tensorflow as tf
 
 
