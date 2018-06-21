@@ -1,4 +1,4 @@
-from test import input_data
+from mnist_test import input_data
 import tensorflow as tf
 import numpy as np
 from PIL import Image
@@ -119,7 +119,7 @@ def train():
                 x: batch[0], y: batch[1], keep_prob: 1.0})
             print("step %d: accuracy= %g" % (i, train_accuracy))
 
-    print("MINST test accuracy %g" %
+    print("MINST mnist_test accuracy %g" %
           accuracy.eval(feed_dict={x: mnist.test.images, y: mnist.test.labels, keep_prob: 1}))
 
 
@@ -165,7 +165,7 @@ def getTestPicArray(file_dir):
 
 # 测试自己的图片
 def useMyPicture():
-    testNum = input("input the number of test picture:")
+    testNum = input("input the number of mnist_test picture:")
     for i in range(int(testNum)):
         single_Img = getTestPicArray(r'local_data\1\1.1.png')
 

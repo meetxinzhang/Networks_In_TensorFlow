@@ -63,8 +63,8 @@ for i, img in enumerate(test_data_list):
     # 标准化，这里不建议使用 tf.image.per_image_standardization ，因为它得到的是 tensor 对象,
     # 将其完美转化为 ndarray 对象需要在 sess 里运行.
     test = cv2.resize(img.astype(np.float32), (227, 227))
-    # img_mean = np.array([104, 117, 124], np.float32)
-    # test = test - img_mean  # 去均值
+    img_mean = np.array([104, 117, 124], np.float32)
+    test = test - img_mean  # 去均值
     img_arr = test.reshape([1, 227, 227, 3])
 
     maxx = np.argmax(session.run(test_softmax, feed_dict={img_ph: img_arr}))

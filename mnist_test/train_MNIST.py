@@ -2,7 +2,7 @@
 import os
 import numpy as np
 import tensorflow as tf
-from test import input_data
+from mnist_test import input_data
 import input_local_data as ild
 
 
@@ -13,6 +13,7 @@ img_mnist_h = tf.placeholder("float", [None, 784])
 lab_mnist_h = tf.placeholder("float", [None, 10])
 
 keep_prob_h = tf.placeholder("float")
+
 
 def get_files(file_dir):
     """
@@ -251,7 +252,7 @@ def run_training_with_mnist(keep_prob):
             # 每训练100次，评估一次，使用训练数据
             print("step %d: accuracy= %g" % (i, acc.eval(feed_dict={img_mnist_h: batch[0], lab_mnist_h: batch[1]})))
 
-    print("MINST test accuracy %g" %
+    print("MINST mnist_test accuracy %g" %
           acc.eval(feed_dict={img_mnist_h: batch[0], lab_mnist_h: batch[1]}))
 
 
