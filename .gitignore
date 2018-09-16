@@ -5,3 +5,4 @@ __pycache__/*
 CNN/model_save/*
 CNN/mnist_test/MNIST_data/*
 GAN/out/*
+CapsuleNet/results/*

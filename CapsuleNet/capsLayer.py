@@ -7,9 +7,9 @@ E-mail: naturomics.liao@gmail.com
 import numpy as np
 import tensorflow as tf
 
-from config import cfg
-from utils import reduce_sum
-from utils import softmax
+from CapsuleNet.config import cfg
+from CapsuleNet.utils import reduce_sum
+from CapsuleNet.utils import softmax
 
 
 epsilon = 1e-9

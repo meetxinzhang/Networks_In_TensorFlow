@@ -6,11 +6,11 @@ E-mail: naturomics.liao@gmail.com
 
 import tensorflow as tf
 
-from config import cfg
-from utils import get_batch_data
-from utils import softmax
-from utils import reduce_sum
-from capsLayer import CapsLayer
+from CapsuleNet.config import cfg
+from CapsuleNet.utils import get_batch_data
+from CapsuleNet.utils import softmax
+from CapsuleNet.utils import reduce_sum
+from CapsuleNet.capsLayer import CapsLayer
 
 
 epsilon = 1e-9

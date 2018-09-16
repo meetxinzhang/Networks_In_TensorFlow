@@ -2,11 +2,11 @@ import os
 import sys
 import numpy as np
 import tensorflow as tf
-from tqdm import tqdm
+from CapsuleNet.tqdm import tqdm
 
-from config import cfg
-from utils import load_data
-from capsNet import CapsNet
+from CapsuleNet.config import cfg
+from CapsuleNet.utils import load_data
+from CapsuleNet.capsNet import CapsNet
 
 
 def save_to():
