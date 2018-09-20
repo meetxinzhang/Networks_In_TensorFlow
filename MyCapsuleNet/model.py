@@ -60,7 +60,6 @@ def squash(v, name="squash"):
 # 使用压缩函数, shape 依然是 [?, 1152, 8]
 caps1_output = squash(caps1_raw, name="caps1_output")
 
-
 '''
 Digit Capsules 层 
 向量神经元 到这里才真正开始出现
@@ -74,8 +73,8 @@ caps2_n_dims = 16
 init_sigma = 0.01
 
 W_init = tf.random_normal(
-   shape=(1, caps1_n_caps, caps2_n_caps, caps2_n_dims, caps1_n_dims),
-   stddev=init_sigma, dtype=tf.float32, name="W_init")
+    shape=(1, caps1_n_caps, caps2_n_caps, caps2_n_dims, caps1_n_dims),
+    stddev=init_sigma, dtype=tf.float32, name="W_init")
 W = tf.Variable(W_init, name="W")
 
 batch_size = tf.shape(X)[0]
@@ -107,3 +106,21 @@ W_tiled 是 1152*10 个 8*16 矩阵
  - 乘以 shape 为 [?, 1152, 10, 8, 1] 的 caps1_output_tiled
  - 等于 shape 为 [?, 1152, 10, 16, 1] 的 caps2_predicted'''
 caps2_predicted = tf.matmul(W_tiled, caps1_output_tiled, name="caps2_predicted")
+
+'''
+Dynamic routing 算法
+'''
+# 第一轮初始化 可能性值 b, shape = [?, 1152, 10, 1, 1]
+b = tf.zeros([batch_size, caps1_n_caps, caps2_n_caps, 1, 1],
+             dtype=np.float32, name="raw_weights")
+# 第一轮初始化概率 c, shape = [?, 1152, 10, 1, 1], 在第三个维度上做归一化, 保证传递给高层胶囊的概率总和为 1
+c = tf.nn.softmax(b, dim=2, name="routing_weights")
+
+# 第一轮计算 各个低层胶囊的 输出*概率
+weighted_predictions = tf.multiply(c, caps2_predicted,
+                                   name="weighted_predictions")
+# 计算共同预测值
+s = tf.reduce_sum(weighted_predictions, axis=1,
+                  keep_dims=True, name="weighted_sum")
+# 压缩函数激活
+v = squash(s, axis=-2, name="caps2_output_round_1")
