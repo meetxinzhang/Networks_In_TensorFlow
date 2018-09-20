@@ -2,7 +2,8 @@
 __pycache__/*
 *.pyc
 *.csv
-CNN/model_save/*
-CNN/mnist_test/MNIST_data/*
+CNN_AlexNet/model_save/*
+CNN_AlexNet/mnist_test/MNIST_data/*
+CNN_AlexNet/out/*
 GAN/out/*
 CapsuleNet/results/*

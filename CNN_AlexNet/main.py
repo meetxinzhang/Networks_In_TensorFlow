@@ -4,7 +4,7 @@
 """
 import numpy as np
 import tensorflow as tf
-from CNN import training_graph as tg, args_manager as am, input_local_data as ild, caffe_classes
+from CNN_AlexNet import training_graph as tg, args_manager as am, input_local_data as ild, caffe_classes
 import cv2
 
 session = tf.InteractiveSession()
@@ -12,8 +12,8 @@ session = tf.InteractiveSession()
 # --------------------------------- build a graph ---------------------------
 args = am.ArgumentManager(session, skip_layer=[])
 
-input_data = ild.InputLocalData(train_file_dir='local_data/',
-                                test_file_dir='alexnet_data/', num_class=1000, num_epochs=3)
+input_data = ild.InputLocalData(train_file_dir='train_data/',
+                                test_file_dir='test_data/', num_class=1000, num_epochs=3)
 # 训练和测试用的批量本地数据
 img_batch, lab_batch = input_data.get_batches(resize_w=227, resize_h=227,
                                               batch_size=3, capacity=20)

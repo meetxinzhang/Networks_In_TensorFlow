@@ -110,7 +110,7 @@ class ModelOfCNN(object):
 
     def output_cnn(self, images):
         """
-        model of CNN
+        model of CNN_AlexNet
         :param images: 28*28*3
         :return tensor shape=[batch_size, NUM_CLASSES] ,没有经过 softMax
         """

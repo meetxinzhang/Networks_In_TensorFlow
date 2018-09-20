@@ -167,7 +167,7 @@ def getTestPicArray(file_dir):
 def useMyPicture():
     testNum = input("input the number of mnist_test picture:")
     for i in range(int(testNum)):
-        single_Img = getTestPicArray(r'local_data\1\1.1.png')
+        single_Img = getTestPicArray(r'train_data\1\1.1.png')
 
         ans = tf.argmax(y_fc2, 1)
         print("The prediction answer is:\n %d" % ans.eval(feed_dict={x: single_Img, keep_prob: 1}))

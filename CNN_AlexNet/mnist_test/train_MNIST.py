@@ -3,7 +3,7 @@ import os
 import numpy as np
 import tensorflow as tf
 from mnist_test import input_data
-from CNN import input_local_data as ild
+from CNN_AlexNet import input_local_data as ild
 
 session = tf.InteractiveSession()
 
@@ -191,12 +191,12 @@ def training(loss):
 
 
 def run_training_with_my_data(step_num, keep_prob):
-    # file_dir = 'local_data/'
+    # file_dir = 'train_data/'
     # image, label = get_files(file_dir)
     # image_batches, label_batches = get_batches(image, label,
     #                                            resize_w=28, resize_h=28, batch_size=2, capacity=20)
 
-    input_new = ild.InputLocalData('local_data/')
+    input_new = ild.InputLocalData('train_data/')
     image_batches, label_batches = input_new.get_batches(28, 28, 2, 20)
 
     print(label_batches)
