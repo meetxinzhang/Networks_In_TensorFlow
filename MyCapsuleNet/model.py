@@ -21,9 +21,9 @@ conv1_params = {
 conv1 = tf.layers.conv2d(X, name="conv1", **conv1_params)
 
 '''
-Primarily Capsules 层
+Primarily Capsules 层 -> 产生向量
+由论文可知, 该层用 32 个滤波器(deep = 256 = 上层通道数)滤了 8 遍, 才产生了8维的向量
 conv2 的 shape 是 [?, 6, 6, 256], 256=32*8,
-由论文可知, 该层实际用了 32 个滤波器(deep = 256 = 上层通道数)滤了 8 遍, 才产生了8维的向量
 该层 (PrimaryCaps) 每个 Capsule (1x8 向量) 和下层  (DigitCaps) 每个 Capsule (1x16 向量) 全连接,
 那么, 最好生成一个变量含有 6*6*32 = 1152 个 Capsule.
 因此, 将 conv2 的 shape [?, 6, 6, 256] 转成 [?, 1152, 8] 即: 6*6*256 => 1115*8'''
@@ -42,36 +42,35 @@ caps1_n_caps = caps1_n_maps * 6 * 6
 caps1_raw = tf.reshape(conv2, [-1, caps1_n_caps, caps1_n_dims], name="caps1_raw")
 
 
-def squash(v, name="squash"):
+def squash(vector, axis=0, name="squash"):
     """
     squash 压缩函数
-    :param v: 输入向量, list 格式
+    :param axis: 需要相加的维度
+    :param vector: 输入向量, list 格式
     :param name: 命名空间
     :return: 压缩后的向量, list
     """
     with tf.name_scope(name):
-        norm_up = sum(np.square(v))
+        norm_up = tf.reduce_sum(np.square(vector), axis=axis, keep_dims=True)
         # 加上 10^-7 再开方,是为了防止分母为0
-        unit_vector = np.sqrt(v / (sum(np.square(v)) + 10 ** -7))
+        unit_vector = vector / np.sqrt(norm_up + 10 ** -7)
         squash_vector = norm_up / (norm_up + 1) * unit_vector
         return squash_vector
 
 
-# 使用压缩函数, shape 依然是 [?, 1152, 8]
-caps1_output = squash(caps1_raw, name="caps1_output")
+# 使用压缩函数, shape 依然是 [?, 1152, 8],
+# 这里使用压缩函数我认为是为了减少计算量.
+caps1_output = squash(caps1_raw, axis=2, name="caps1_output")
 
 '''
-Digit Capsules 层 
-向量神经元 到这里才真正开始出现
-W_tiled 即为 向量神经元的 第一个权重 W 
-1152 个 PrimaryCaps 的变量 (1x8) 需要乘以姿态矩阵 (8x16) 得到 10 个 DigitCaps 的变量 (1x16)
-下面的代码对矩阵进行了扩充, 原作者认为这样的矩阵乘法效率最高, 我的理解是去掉了 for 循环, 用空间复杂度换取时间复杂度
-W_tiled 的 shape = [?, 1152, 10,16, 8]
+Digit Capsules 层 -> 向量神经元 开始出现
+向量神经元 -> 乘以第一个权重 变换矩阵
 '''
 caps2_n_caps = 10
 caps2_n_dims = 16
 init_sigma = 0.01
 
+# 随机产生 W
 W_init = tf.random_normal(
     shape=(1, caps1_n_caps, caps2_n_caps, caps2_n_dims, caps1_n_dims),
     stddev=init_sigma, dtype=tf.float32, name="W_init")
@@ -101,14 +100,16 @@ caps1_output_tiled = tf.tile(caps1_output_tile, [1, 1, caps2_n_caps, 1, 1], name
 '''
 高维矩阵乘法
 caps2_predicted 即是每一个低层 capsule 的输出
-W_tiled 是 1152*10 个 8*16 矩阵
+W_tiled 是 10*1152 个 8*16 矩阵
  - 用 shape 为 [?, 1152, 10, 16, 8] 的 W_tiled
  - 乘以 shape 为 [?, 1152, 10, 8, 1] 的 caps1_output_tiled
  - 等于 shape 为 [?, 1152, 10, 16, 1] 的 caps2_predicted'''
 caps2_predicted = tf.matmul(W_tiled, caps1_output_tiled, name="caps2_predicted")
 
 '''
-Dynamic routing 算法
+Dynamic routing 算法 -> 乘以向量神经元的第二个权重
+这里是第一轮迭代
+每一次迭代, 都使用了原始的 胶囊输出值 weighted_predictions 与 c 相乘
 '''
 # 第一轮初始化 可能性值 b, shape = [?, 1152, 10, 1, 1]
 b = tf.zeros([batch_size, caps1_n_caps, caps2_n_caps, 1, 1],
@@ -119,8 +120,143 @@ c = tf.nn.softmax(b, dim=2, name="routing_weights")
 # 第一轮计算 各个低层胶囊的 输出*概率
 weighted_predictions = tf.multiply(c, caps2_predicted,
                                    name="weighted_predictions")
-# 计算共同预测值
+
+'''神经元 -> 汇总平均预测值
+# 在第二个维度相加, shape 变为 [?, 1, 10, 16, 1]
+并使用压缩函数激活'''
 s = tf.reduce_sum(weighted_predictions, axis=1,
                   keep_dims=True, name="weighted_sum")
-# 压缩函数激活
+
 v = squash(s, axis=-2, name="caps2_output_round_1")
+
+'''
+计算 agreement, 衡量低层胶囊与高层胶囊各自输出的一致性
+# 按 caps1_n_caps 铺开, 以便和低层胶囊输出相乘'''
+v_tiled = tf.tile(v, [1, caps1_n_caps, 1, 1, 1],
+                  name="caps2_output_round_1_tiled")
+# 低层胶囊的输出 和 平均预测值 相乘
+# agreement 会有正负, 取决于 caps2_predicted 和 v_tiled 中每个向量的值
+agreement = tf.matmul(caps2_predicted, v_tiled,
+                      transpose_a=True, name="agreement")
+
+'''
+更新 b 可能性 的值
+更新 c 概率 的值
+这里是第二轮迭代'''
+b = tf.add(b, agreement, name="raw_weights_round_2")
+c = tf.nn.softmax(b, dim=2, name="routing_weights_round_2")
+
+weighted_predictions = tf.multiply(c, caps2_predicted,
+                                   name="weighted_predictions_round_2")
+s = tf.reduce_sum(weighted_predictions, axis=1,
+                  keep_dims=True, name="weighted_sum_round_2")
+v = squash(s, axis=-2, name="caps2_output_round_2")
+
+'''
+第三轮迭代'''
+v_tiled = tf.tile(v, [1, caps1_n_caps, 1, 1, 1],
+                  name="caps2_output_round_2_tiled")
+agreement = tf.matmul(caps2_predicted, v_tiled,
+                      transpose_a=True, name="agreement")
+b = tf.add(b, agreement, name="raw_weights_round_3")
+c = tf.nn.softmax(b, dim=2, name="routing_weights_round_3")
+weighted_predictions = tf.multiply(c, caps2_predicted,
+                                   name="weighted_predictions_round_3")
+s = tf.reduce_sum(weighted_predictions, axis=1,
+                  keep_dims=True, name="weighted_sum_round_3")
+v = squash(s, axis=-2, name="caps2_output_round_3")
+
+'''
+间隔损失
+Capsule 允许多个分类同时存在
+定义新的损失函数, 代替传统的交叉熵'''
+m_plus = 0.9
+m_minus = 0.1
+lambda_ = 0.5
+# 独热编码 T.shape=[?, 10], 默认 axis=1
+T = tf.one_hot(y, depth=caps2_n_caps, name="T")
+
+# 范数, 默认 ord=euclidean 欧几里得范数,即距离范数, 这里就是向量长度, 即预测概率
+# axis=-2 倒数第二个维度为轴, 看成一组向量, 分别计算范数
+# v.shape=[?, 1, 10, 16, 1], 所以 v_norm.shape=[?, 1, 10, 1, 1]
+v_norm = tf.norm(v, axis=-2, keep_dims=True, name="caps2_output_norm")
+
+# FP.shape=[?, 10]
+FP_raw = tf.square(tf.maximum(0., m_plus - v_norm), name="FP_raw")
+FP = tf.reshape(FP_raw, shape=(-1, 10), name="FP")
+# FN.shape=[?, 10]
+FN_raw = tf.square(tf.maximum(0., v_norm - m_minus), name="FN_raw")
+FN = tf.reshape(FN_raw, shape=(-1, 10), name="FN")
+
+# 注意: shape 相同的矩阵相乘是对应元素相乘
+L = tf.add(T * FP, lambda_ * (1.0 - T) * FN, name="L")
+
+margin_loss = tf.reduce_mean(tf.reduce_sum(L, axis=1), name="margin_loss")
+
+
+'''
+Mask 机制'''
+mask_with_labels = tf.placeholder_with_default(False, shape=(),
+                                               name="mask_with_labels")
+reconstruction_targets = tf.cond(mask_with_labels,  # condition
+                                 lambda: y,  # if True
+                                 lambda: y_pred,  # if False
+                                 name="reconstruction_targets")
+reconstruction_mask = tf.one_hot(reconstruction_targets,
+                                 depth=caps2_n_caps,
+                                 name="reconstruction_mask")
+reconstruction_mask_reshaped = tf.reshape(
+    reconstruction_mask, [-1, 1, caps2_n_caps, 1, 1],
+    name="reconstruction_mask_reshaped")
+caps2_output_masked = tf.multiply(
+    v, reconstruction_mask_reshaped,
+    name="caps2_output_masked")
+
+'''
+解码器'''
+n_hidden1 = 512
+n_hidden2 = 1024
+n_output = 28 * 28
+
+decoder_input = tf.reshape(caps2_output_masked,
+                           [-1, caps2_n_caps * caps2_n_dims],
+                           name="decoder_input")
+
+with tf.name_scope("decoder"):
+    hidden1 = tf.layers.dense(decoder_input, n_hidden1,
+                              activation=tf.nn.relu,
+                              name="hidden1")
+    hidden2 = tf.layers.dense(hidden1, n_hidden2,
+                              activation=tf.nn.relu,
+                              name="hidden2")
+    decoder_output = tf.layers.dense(hidden2, n_output,
+                                     activation=tf.nn.sigmoid,
+                                     name="decoder_output")
+
+'''
+重构损失'''
+X_flat = tf.reshape(X, [-1, n_output], name="X_flat")
+squared_difference = tf.square(X_flat - decoder_output,
+                               name="squared_difference")
+reconstruction_loss = tf.reduce_sum(squared_difference,
+                                    name="reconstruction_loss")
+
+'''
+最终损失'''
+alpha = 0.0005
+loss = tf.add(margin_loss, alpha * reconstruction_loss, name="loss")
+
+
+'''
+主函数'''
+# 全局初始化
+init = tf.global_variables_initializer()
+saver = tf.train.Saver()
+
+# 计算精度
+correct = tf.equal(y, y_pred, name="correct")
+accuracy = tf.reduce_mean(tf.cast(correct, tf.float32), name="accuracy")
+
+# 用 Adam 优化器
+optimizer = tf.train.AdamOptimizer()
+training_op = optimizer.minimize(loss, name="training_op")
