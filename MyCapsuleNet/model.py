@@ -106,92 +106,89 @@ W_tiled 是 10*1152 个 8*16 矩阵
  - 等于 shape 为 [?, 1152, 10, 16, 1] 的 caps2_predicted'''
 caps2_predicted = tf.matmul(W_tiled, caps1_output_tiled, name="caps2_predicted")
 
-'''
-Dynamic routing 算法 -> 乘以向量神经元的第二个权重
-这里是第一轮迭代
-每一次迭代, 都使用了原始的 胶囊输出值 weighted_predictions 与 c 相乘
-'''
-# 第一轮初始化 可能性值 b, shape = [?, 1152, 10, 1, 1]
-b = tf.zeros([batch_size, caps1_n_caps, caps2_n_caps, 1, 1],
-             dtype=np.float32, name="raw_weights")
-# 第一轮初始化概率 c, shape = [?, 1152, 10, 1, 1], 在第三个维度上做归一化, 保证传递给高层胶囊的概率总和为 1
-c = tf.nn.softmax(b, dim=2, name="routing_weights")
 
-# 第一轮计算 各个低层胶囊的 输出*概率
-weighted_predictions = tf.multiply(c, caps2_predicted,
-                                   name="weighted_predictions")
+def dynamic_routing(name, caps2_predicted, num_caps1, num_caps2, times=3):
+    """
+    :param name: 命名空间
+    :param caps2_predicted: [?, 1152, 10, 16, 1]
+    :param times: 循环的次数
+    :param num_caps1: 上一层的胶囊数
+    :param num_caps2: 这一层的胶囊数
+    :return: 压缩激活后的 [?, 1, num_caps2, 16, 1]
+    """
+    batch_size = np.shape(caps2_predicted)[0]
 
-'''神经元 -> 汇总平均预测值
-# 在第二个维度相加, shape 变为 [?, 1, 10, 16, 1]
-并使用压缩函数激活'''
-s = tf.reduce_sum(weighted_predictions, axis=1,
-                  keep_dims=True, name="weighted_sum")
+    with tf.name_scope(name):
+        # 初始化 可能性值 b, shape = [?, 1152, 10, 1, 1]
+        b = tf.zeros([batch_size, num_caps1, num_caps2, 1, 1],
+                     dtype=np.float32, name="raw_weights")
+        # 初始化概率 c, shape = [?, 1152, 10, 1, 1], 在第三个维度上做归一化, 保证传递给高层胶囊的概率总和为 1
+        c = tf.nn.softmax(b, dim=2, name="routing_weights")
 
-v = squash(s, axis=-2, name="caps2_output_round_1")
+        for i in range(0, times):
+            # weighted_predictions 依然是 [?, 1152, 10, 16, 1]
+            # tf.multiply（）两个矩阵中对应元素各自相乘
+            weighted_predictions = tf.multiply(c, caps2_predicted,
+                                               name="weighted_predictions")
+            # [?, 1, 10, 16, 1]
+            sum_predictions = tf.reduce_sum(weighted_predictions, axis=1,
+                                            keep_dims=True, name="weighted_sum")
+            v = squash(sum_predictions, axis=-2, name="caps2_output_round_1")
 
-'''
-计算 agreement, 衡量低层胶囊与高层胶囊各自输出的一致性
-# 按 caps1_n_caps 铺开, 以便和低层胶囊输出相乘'''
-v_tiled = tf.tile(v, [1, caps1_n_caps, 1, 1, 1],
-                  name="caps2_output_round_1_tiled")
-# 低层胶囊的输出 和 平均预测值 相乘
-# agreement 会有正负, 取决于 caps2_predicted 和 v_tiled 中每个向量的值
-agreement = tf.matmul(caps2_predicted, v_tiled,
-                      transpose_a=True, name="agreement")
+            while i == 2:
+                return v
 
-'''
-更新 b 可能性 的值
-更新 c 概率 的值
-这里是第二轮迭代'''
-b = tf.add(b, agreement, name="raw_weights_round_2")
-c = tf.nn.softmax(b, dim=2, name="routing_weights_round_2")
+            # 再次变成 [?, 1152, 10, 16, 1]
+            v_tiled = tf.tile(v, [1, num_caps1, 1, 1, 1],
+                              name="caps2_output_round_1_tiled")
+            # 低层胶囊的输出 和 平均预测值 矩阵相乘
+            # agreement 会有正负, 取决于 caps2_predicted 和 v_tiled 中每个向量的值
+            agreement = tf.matmul(caps2_predicted, v_tiled,
+                                  transpose_a=True, name="agreement")
+            b = tf.add(b, agreement, name="raw_weights_round_2")
+            c = tf.nn.softmax(b, dim=2, name="routing_weights_round_2")
 
-weighted_predictions = tf.multiply(c, caps2_predicted,
-                                   name="weighted_predictions_round_2")
-s = tf.reduce_sum(weighted_predictions, axis=1,
-                  keep_dims=True, name="weighted_sum_round_2")
-v = squash(s, axis=-2, name="caps2_output_round_2")
 
-'''
-第三轮迭代'''
-v_tiled = tf.tile(v, [1, caps1_n_caps, 1, 1, 1],
-                  name="caps2_output_round_2_tiled")
-agreement = tf.matmul(caps2_predicted, v_tiled,
-                      transpose_a=True, name="agreement")
-b = tf.add(b, agreement, name="raw_weights_round_3")
-c = tf.nn.softmax(b, dim=2, name="routing_weights_round_3")
-weighted_predictions = tf.multiply(c, caps2_predicted,
-                                   name="weighted_predictions_round_3")
-s = tf.reduce_sum(weighted_predictions, axis=1,
-                  keep_dims=True, name="weighted_sum_round_3")
-v = squash(s, axis=-2, name="caps2_output_round_3")
+v = dynamic_routing(caps2_predicted, caps1_n_caps, caps2_n_caps, name='dynamic_routing')
 
-'''
-间隔损失
-Capsule 允许多个分类同时存在
-定义新的损失函数, 代替传统的交叉熵'''
-m_plus = 0.9
-m_minus = 0.1
-lambda_ = 0.5
-# 独热编码 T.shape=[?, 10], 默认 axis=1
-T = tf.one_hot(y, depth=caps2_n_caps, name="T")
 
-# 范数, 默认 ord=euclidean 欧几里得范数,即距离范数, 这里就是向量长度, 即预测概率
-# axis=-2 倒数第二个维度为轴, 看成一组向量, 分别计算范数
-# v.shape=[?, 1, 10, 16, 1], 所以 v_norm.shape=[?, 1, 10, 1, 1]
-v_norm = tf.norm(v, axis=-2, keep_dims=True, name="caps2_output_norm")
+def my_loss(y, v):
+    """
+    间隔损失
+    Capsule 允许多个分类同时存在
+    定义新的损失函数, 代替传统的交叉熵
+    :param y: 真实值 [?, 1]
+    :param v: dynamic_routing 的输出, [?, 1, num_caps2, 16, 1]
+    :return: margin_loss [?, 1]
+    """
+    m_plus = 0.9
+    m_minus = 0.1
+    lambda_ = 0.5
 
-# FP.shape=[?, 10]
-FP_raw = tf.square(tf.maximum(0., m_plus - v_norm), name="FP_raw")
-FP = tf.reshape(FP_raw, shape=(-1, 10), name="FP")
-# FN.shape=[?, 10]
-FN_raw = tf.square(tf.maximum(0., v_norm - m_minus), name="FN_raw")
-FN = tf.reshape(FN_raw, shape=(-1, 10), name="FN")
+    # 独热编码 T.shape=[?, 10], 默认 axis=1
+    depth = np.shape(v)[2]
+    T = tf.one_hot(y, depth=depth, name="T")
 
-# 注意: shape 相同的矩阵相乘是对应元素相乘
-L = tf.add(T * FP, lambda_ * (1.0 - T) * FN, name="L")
+    # 范数, 默认 ord=euclidean 欧几里得范数,即距离范数, 这里就是向量长度, 即预测概率
+    # axis=-2 倒数第二个维度为轴, 看成一组向量, 分别计算范数
+    # v.shape=[?, 1, 10, 16, 1], 所以 v_norm.shape=[?, 1, 10, 1, 1]
+    v_norm = tf.norm(v, axis=-2, keep_dims=True, name="caps2_output_norm")
 
-margin_loss = tf.reduce_mean(tf.reduce_sum(L, axis=1), name="margin_loss")
+    # FP.shape=[?, 10]
+    FP_raw = tf.square(tf.maximum(0., m_plus - v_norm), name="FP_raw")
+    FP = tf.reshape(FP_raw, shape=(-1, 10), name="FP")
+    # FN.shape=[?, 10]
+    FN_raw = tf.square(tf.maximum(0., v_norm - m_minus), name="FN_raw")
+    FN = tf.reshape(FN_raw, shape=(-1, 10), name="FN")
+
+    # 注意: shape 相同的矩阵相乘是对应元素相乘
+    # L.shape 依然是 [?, 10]
+    L = tf.add(T * FP, lambda_ * (1.0 - T) * FN, name="L")
+
+    # margin_loss.shape=[?, 1]
+    margin_loss = tf.reduce_mean(tf.reduce_sum(L, axis=1), name="margin_loss")
+
+    return margin_loss
 
 
 '''
@@ -245,7 +242,6 @@ reconstruction_loss = tf.reduce_sum(squared_difference,
 最终损失'''
 alpha = 0.0005
 loss = tf.add(margin_loss, alpha * reconstruction_loss, name="loss")
-
 
 '''
 主函数'''

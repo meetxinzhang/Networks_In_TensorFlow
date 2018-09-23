@@ -7,17 +7,6 @@ a = [[[1, 2, 3, 4],
      [[1, 1, 1, 1],
      [2, 1, 1, 1]]]
 
-b = [[1, 2],
-     [3, 4],
-     [5, 6]]
-
-c = [[6, 5],
-     [4, 3],
-     [2, 1]]
-
-b = tf.reshape(b, [3, 2])
-c = tf.reshape(c, [3, 2])
-
 
 # c = tf.reduce_sum(np.square(a), axis=1, keep_dims=True)
 # c = tf.one_hot(b, depth=10, axis=1)
@@ -25,4 +14,9 @@ c = tf.reshape(c, [3, 2])
 session = tf.InteractiveSession()
 # d = tf.expand_dims(a, axis=-1)
 
-print(session.run(b*c))
+b = tf.reduce_sum(a, axis=1)
+
+c = tf.reduce_mean(b)
+
+
+print(session.run(b), '\n',  session.run(c))
