@@ -191,23 +191,34 @@ def my_loss(y, v):
     return margin_loss
 
 
-'''
-Mask 机制'''
-mask_with_labels = tf.placeholder_with_default(False, shape=(),
-                                               name="mask_with_labels")
-reconstruction_targets = tf.cond(mask_with_labels,  # condition
-                                 lambda: y,  # if True
-                                 lambda: y_pred,  # if False
-                                 name="reconstruction_targets")
-reconstruction_mask = tf.one_hot(reconstruction_targets,
-                                 depth=caps2_n_caps,
-                                 name="reconstruction_mask")
-reconstruction_mask_reshaped = tf.reshape(
-    reconstruction_mask, [-1, 1, caps2_n_caps, 1, 1],
-    name="reconstruction_mask_reshaped")
-caps2_output_masked = tf.multiply(
-    v, reconstruction_mask_reshaped,
-    name="caps2_output_masked")
+def mask(y, y_pred, v):
+    """
+    Mask 机制, 原作者也没说明白
+    :param y:
+    :param y_pred:
+    :param v: [?, 1, num_caps2, 16, 1]
+    :return: [?, 1, num_caps2, 16, 1]
+    """
+    mask_with_labels = tf.placeholder_with_default(False, shape=(),
+                                                   name="mask_with_labels")
+    reconstruction_targets = tf.cond(mask_with_labels,  # condition
+                                     lambda: y,  # if True
+                                     lambda: y_pred,  # if False
+                                     name="reconstruction_targets")
+    reconstruction_mask = tf.one_hot(reconstruction_targets,
+                                     depth=caps2_n_caps,
+                                     name="reconstruction_mask")
+    reconstruction_mask_reshaped = tf.reshape(
+        reconstruction_mask, [-1, 1, caps2_n_caps, 1, 1],
+        name="reconstruction_mask_reshaped")
+    # 对应元素相乘
+    caps2_output_masked = tf.multiply(v, reconstruction_mask_reshaped, name="caps2_output_masked")
+
+    return caps2_output_masked
+
+
+caps2_output_masked = mask(y, y_pred, v)
+
 
 '''
 解码器'''
@@ -215,8 +226,8 @@ n_hidden1 = 512
 n_hidden2 = 1024
 n_output = 28 * 28
 
-decoder_input = tf.reshape(caps2_output_masked,
-                           [-1, caps2_n_caps * caps2_n_dims],
+# decoder_input.shape = [?, 10*16]
+decoder_input = tf.reshape(caps2_output_masked, [-1, caps2_n_caps * caps2_n_dims],
                            name="decoder_input")
 
 with tf.name_scope("decoder"):
