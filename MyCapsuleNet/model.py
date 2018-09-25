@@ -105,50 +105,60 @@ W_tiled 是 10*1152 个 8*16 矩阵
  - 乘以 shape 为 [?, 1152, 10, 8, 1] 的 caps1_output_tiled
  - 等于 shape 为 [?, 1152, 10, 16, 1] 的 caps2_predicted
 再用 tf.squeeze 去掉大小为 1 的维度, 变为 [?, 1152, 10, 16]'''
-caps2_predicted = tf.matmul(W_tiled, caps1_output_tiled, name="caps2_predicted")
-caps2_predicted = tf.squeeze(caps2_predicted)
+caps2_matrixTFed = tf.matmul(W_tiled, caps1_output_tiled, name="caps2_predicted")
+caps2_matrixTFed = tf.squeeze(caps2_matrixTFed)
 
 
-def dynamic_routing(name, caps2_predicted, num_caps1, num_caps2, times=3):
+def dynamic_routing(name, caps2_matrixTFed, times=3):
     """
     :param name: 命名空间
-    :param caps2_predicted: [?, 1152, 10, 16, 1]
+    :param caps2_matrixTFed: 经过 W 矩阵变换过的 caps2 的输出 [?, 1152, 10, 16]
     :param times: 循环的次数
-    :param num_caps1: 上一层的胶囊数
-    :param num_caps2: 这一层的胶囊数
     :return: 压缩激活后的 [?, 1, num_caps2, 16, 1]
     """
-    batch_size = np.shape(caps2_predicted)[0]
+    the_shape = np.shape(caps2_matrixTFed)
+    batch_size = the_shape[0]
+    num_caps1 = the_shape[1]
+    num_caps2 = the_shape[2]
+    # dims_caps2 = the_shape[3]
 
     with tf.name_scope(name):
-        # 初始化 可能性值 b, shape = [?, 1152, 10, 1, 1]
-        b = tf.zeros([batch_size, num_caps1, num_caps2, 1, 1],
+        # 初始化 可能性值 b, shape = [?, 1152, 10, 1], 因为维度数要一致
+        b = tf.zeros([batch_size, num_caps1, num_caps2, 1],
                      dtype=np.float32, name="raw_weights")
-        # 初始化概率 c, shape = [?, 1152, 10, 1, 1], 在第三个维度上做归一化, 保证传递给高层胶囊的概率总和为 1
+        # 初始化概率 c, shape = [?, 1152, 10, 1], 在第三个维度上做归一化, 保证传递给高层胶囊的概率总和为 1
         c = tf.nn.softmax(b, dim=2, name="routing_weights")
 
         for i in range(0, times):
-            # weighted_predictions 依然是 [?, 1152, 10, 16, 1]
+            # weighted_predictions 依然是 [?, 1152, 10, 16]
             # tf.multiply（）两个矩阵中对应元素各自相乘
-            weighted_predictions = tf.multiply(c, caps2_predicted,
+            weighted_predictions = tf.multiply(c, caps2_matrixTFed,
                                                name="weighted_predictions")
-            # [?, 1, 10, 16, 1]
+            # [?, 1, 10, 16]
             sum_predictions = tf.reduce_sum(weighted_predictions, axis=1,
-                                            keep_dims=True, name="weighted_sum")
-            v = squash(sum_predictions, axis=-2, name="caps2_output_round_1")
+                                            keep_dims=True, name="sum_predictions")
+            v = squash(sum_predictions, axis=-1, name="caps2_output_round_"+str(i))
 
             while i == 2:
                 return v
 
-            # 再次变成 [?, 1152, 10, 16, 1]
-            v_tiled = tf.tile(v, [1, num_caps1, 1, 1, 1],
+            # 再次变成 [?, 1152, 10, 16], 以便 低层胶囊的输出 和 平均预测值 矩阵相乘
+            v_tiled = tf.tile(v, [1, num_caps1, 1, 1],
                               name="caps2_output_round_1_tiled")
-            # 低层胶囊的输出 和 平均预测值 矩阵相乘
+
+            # 这里对应向量求点积
             # agreement 会有正负, 取决于 caps2_predicted 和 v_tiled 中每个向量的值
-            agreement = tf.matmul(caps2_predicted, v_tiled,
-                                  transpose_a=True, name="agreement")
+
+            # 版本一
+            # 对第一个(a)矩阵做了转置 transpose_a=True, 再求矩阵乘积
+            # agreement = tf.matmul(caps2_matrixTFed, v_tiled, transpose_a=True, name="agreement")
+
+            # 版本二
+            agreement_step1 = tf.multiply(caps2_matrixTFed, v_tiled)
+            agreement = tf.reduce_sum(agreement_step1, axis=-1, keep_dims=True)
+
             b = tf.add(b, agreement, name="raw_weights_round_2")
             c = tf.nn.softmax(b, dim=2, name="routing_weights_round_2")
 
 
-v = dynamic_routing(caps2_predicted, caps1_n_caps, caps2_n_caps, name='dynamic_routing')
+v = dynamic_routing(caps2_matrixTFed, caps1_n_caps, caps2_n_caps, name='dynamic_routing')
