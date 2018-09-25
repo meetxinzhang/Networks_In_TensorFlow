@@ -114,7 +114,7 @@ def dynamic_routing(name, caps2_matrixTFed, times=3):
     :param name: 命名空间
     :param caps2_matrixTFed: 经过 W 矩阵变换过的 caps2 的输出 [?, 1152, 10, 16]
     :param times: 循环的次数
-    :return: 压缩激活后的 [?, 1, num_caps2, 16, 1]
+    :return: 压缩激活后的 [?, 1, num_caps2, 16]
     """
     the_shape = np.shape(caps2_matrixTFed)
     batch_size = the_shape[0]
@@ -150,7 +150,7 @@ def dynamic_routing(name, caps2_matrixTFed, times=3):
             # agreement 会有正负, 取决于 caps2_predicted 和 v_tiled 中每个向量的值
 
             # 版本一
-            # 对第一个(a)矩阵做了转置 transpose_a=True, 再求矩阵乘积
+            # 对第一个(a)矩阵做了转置 transpose_a=True, 再求矩阵乘积, 好像有点不对
             # agreement = tf.matmul(caps2_matrixTFed, v_tiled, transpose_a=True, name="agreement")
 
             # 版本二
