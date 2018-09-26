@@ -176,10 +176,10 @@ def get_y_(model_out):
     """
     得到预测值
     :param model_out: [?, num_caps2, 16]
-    :return: [?, 1]
+    :return: [?, ]
     """
     y_step1 = tf.norm(model_out, axis=-1, keepdims=False)
     # print(np.shape(y_step1))
     y_ = tf.argmax(y_step1, axis=1)
-    # print(np.shape(y_))
+    print(np.shape(y_))
     return y_
