@@ -251,7 +251,7 @@ def run_training_with_mnist(keep_prob):
             # 每训练100次，评估一次，使用训练数据
             print("step %d: accuracy= %g" % (i, acc.eval(feed_dict={img_mnist_h: batch[0], lab_mnist_h: batch[1]})))
 
-    print("MINST mnist_test accuracy %g" %
+    print("MINST recycle_bin accuracy %g" %
           acc.eval(feed_dict={img_mnist_h: batch[0], lab_mnist_h: batch[1]}))
 
 
