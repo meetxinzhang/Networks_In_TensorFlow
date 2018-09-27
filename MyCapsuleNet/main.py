@@ -24,7 +24,7 @@ x_image = tf.reshape(img_mnist_h, [-1, 28, 28, 1])
 y_label = tf.argmax(lab_mnist_h, axis=1)
 
 caps2_matrixTFed = capsules_generator(X=x_image)
-v, y_ = dynamic_routing(caps2_matrixTFed, times=3)
+v, y_ = dynamic_routing(caps2_matrixTFed, batch_size=50, times=3)
 
 loss = my_loss(X=x_image, y=y_label, y_=y_, model_out=v)
 

@@ -13,6 +13,7 @@ def capsules_generator(X):
     """
     # X = tf.reshape(X, [-1, 28, 28])
     # X = tf.expand_dims(X, axis=-1)
+    X_size = np.shape(X)[1]
     '''
     卷积层
     ** 代表传递一个字典类型的变量
@@ -94,13 +95,13 @@ def capsules_generator(X):
      - 乘以 shape 为 [?, 1152, 10, 8, 1] 的 caps1_output_tiled
      - 等于 shape 为 [?, 1152, 10, 16, 1] 的 caps2_matrixTFed
     再用 tf.squeeze 去掉大小为 1 的维度, 变为 [?, 1152, 10, 16]'''
-    caps2_matrixTFed = tf.matmul(W_tiled, caps1_output_tiled, name="caps2_predicted")
-    caps2_matrixTFed = tf.reshape(caps2_matrixTFed, [-1, 1152, 10, 16])
+    caps2_matrixTFed = tf.matmul(W_tiled, caps1_output_tiled, name="caps2_matrixTFed")
+    caps2_matrixTFed = tf.reshape(caps2_matrixTFed, [-1, caps1_n_caps, caps2_n_caps, caps2_n_dims])
 
     return caps2_matrixTFed
 
 
-def dynamic_routing(caps2_matrixTFed, times=3):
+def dynamic_routing(caps2_matrixTFed, batch_size, times=3):
     """
     :param name: 命名空间
     :param caps2_matrixTFed: 经过 W 矩阵变换过的 caps2 的输出 [?, 1152, 10, 16]
@@ -115,7 +116,7 @@ def dynamic_routing(caps2_matrixTFed, times=3):
 
     with tf.name_scope("dynamic_routing"):
         # 初始化 可能性值 b, shape = [?, 1152, 10, 1], 因为维度数要一致
-        b = tf.zeros([50, num_caps1, num_caps2, 1],
+        b = tf.zeros([batch_size, num_caps1, num_caps2, 1],
                      dtype=np.float32, name="raw_weights")
 
         # 初始化概率 c, shape = [?, 1152, 10, 1], 在第三个维度上做归一化, 保证传递给高层胶囊的概率总和为 1
