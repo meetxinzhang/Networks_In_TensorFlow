@@ -28,6 +28,7 @@ v, y_ = dynamic_routing(caps2_matrixTFed, batch_size=50, times=3)
 
 loss = my_loss(X=x_image, y=y_label, y_=y_, model_out=v)
 
+
 # 计算精度
 correct = tf.equal(y_label, y_, name="correct")
 accuracy = tf.reduce_mean(tf.cast(correct, tf.float32), name="accuracy")

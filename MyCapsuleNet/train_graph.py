@@ -43,7 +43,8 @@ def margin_loss(model_out, y):
 
 def mask(model_out, y, y_):
     """
-    Mask 机制, 原作者也没说明白
+    Mask 机制, model_out 和 label 对应元素相乘, 无论是预测值还是真实值,
+    都会削弱图片中背景的影响
     :param y: 真实值
     :param y_pred: 预测值
     :param model_out: [?, caps2_n_caps, 16]
@@ -71,7 +72,7 @@ def mask(model_out, y, y_):
 
 def decoder(model_output_masked, X_size=28):
     """
-    解码器
+    解码器, 包含三个全连接层
     将 model_output_masked 扁平化之后经过全连接层
     :param model_output_masked: 模型输出后, 经过 mask 函数处理过的, [?, num_caps2, 16]
     :return: [?, 28*28]
