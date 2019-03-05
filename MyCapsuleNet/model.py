@@ -103,7 +103,6 @@ def capsules_generator(X):
 
 def dynamic_routing(caps2_matrixTFed, batch_size, times=3):
     """
-    :param name: 命名空间
     :param caps2_matrixTFed: 经过 W 矩阵变换过的 caps2 的输出 [?, 1152, 10, 16]
     :param times: 循环的次数
     :return: 压缩激活后的 [?, num_caps2, 16]
@@ -184,3 +183,21 @@ def get_y_(model_out):
     y_ = tf.argmax(y_step1, axis=1)
     print(np.shape(y_))
     return y_
+
+
+# def my_routing(caps2_matrixTFed, batch_size):
+#     """
+#     :param caps2_matrixTFed: 经过 W 矩阵变换过的 caps2 的输出 [?, 1152, 10, 16]
+#     :param batch_size:
+#     :return: 压缩激活后的 [?, num_caps2, 16]
+#     """
+#     num_caps = np.shape(caps2_matrixTFed)[1]
+#     new = caps2_matrixTFed
+#
+#     for i in range(num_caps):
+#
+#
+#
+#     routed = [None, 10, 16]
+#
+#     return routed

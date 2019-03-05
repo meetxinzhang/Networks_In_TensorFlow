@@ -7,6 +7,11 @@ import os
 
 
 def xavier_init(size):
+    """
+    权值初始
+    :param size:
+    :return:
+    """
     in_dim = size[0]
     xavier_stddev = 1. / tf.sqrt(in_dim / 2.)
     return tf.random_normal(shape=size, stddev=xavier_stddev)
@@ -36,6 +41,7 @@ theta_G = [G_W1, G_W2, G_b1, G_b2]
 
 def sample_Z(m, n):
     """
+    随机噪音
     a = np.random.uniform(-1., 1., size=[3, 3])
     print(a)
     [[-0.25263152 -0.79259724  0.08026679]
@@ -94,6 +100,7 @@ G_loss = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(logits=D_logit_f
 D_solver = tf.train.AdamOptimizer().minimize(D_loss, var_list=theta_D)
 G_solver = tf.train.AdamOptimizer().minimize(G_loss, var_list=theta_G)
 
+# 批次大小
 mb_size = 128
 Z_dim = 100
 
