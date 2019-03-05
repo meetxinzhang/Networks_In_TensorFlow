@@ -8,7 +8,7 @@ def margin_loss(model_out, y):
     Capsule 允许多个分类同时存在
     定义新的损失函数, 代替传统的交叉熵
     :param y: 真实值 [?, 1]
-    :param model_out: dynamic_routing 的输出, [?, num_caps2, 16]
+    :param model_out: dynamic_routing 的输出, [?, 22, 16]
     :return: margin_loss [?, 1]
     """
     m_plus = 0.9
@@ -24,12 +24,13 @@ def margin_loss(model_out, y):
     # model_out.shape=[?, 10, 16], 所以 v_norm.shape=[?, 10, 1]
     v_norm = tf.norm(model_out, axis=-1, keepdims=True, name="caps2_output_norm")
 
-    # FP.shape=[?, 10]
+    # FP.shape=[?, 22]
+    dim = tf.shape(model_out)[1]
     FP_raw = tf.square(tf.maximum(0., m_plus - v_norm), name="FP_raw")
-    FP = tf.reshape(FP_raw, shape=(-1, 10), name="FP")
-    # FN.shape=[?, 10]
+    FP = tf.reshape(FP_raw, shape=(-1, dim), name="FP")
+    # FN.shape=[?, 22]
     FN_raw = tf.square(tf.maximum(0., v_norm - m_minus), name="FN_raw")
-    FN = tf.reshape(FN_raw, shape=(-1, 10), name="FN")
+    FN = tf.reshape(FN_raw, shape=(-1, dim), name="FN")
 
     # 注意: shape 相同的矩阵相乘是对应元素相乘
     # L.shape 依然是 [?, 10]
@@ -45,12 +46,13 @@ def mask(model_out, y, y_):
     """
     Mask 机制, model_out 和 label 对应元素相乘, 无论是预测值还是真实值,
     都会削弱图片中背景的影响
-    :param y: 真实值
-    :param y_pred: 预测值
+    :param y: 真实值 [?, ]
+    :param y_: 预测值 [?, ]
     :param model_out: [?, caps2_n_caps, 16]
     :return: [?, caps2_n_caps, 16]
     """
     caps2_n_caps = np.shape(model_out)[-2]
+    # 使用预测值来 mask， 也可以采用真实值来 mask
     mask_with_labels = tf.placeholder_with_default(False, shape=(),
                                                    name="mask_with_labels")
     # if...else...
@@ -70,34 +72,34 @@ def mask(model_out, y, y_):
     return model_output_masked
 
 
-def decoder(model_output_masked, X_size=28):
+def decoder(model_output_masked, X_size=256):
     """
     解码器, 包含三个全连接层
     将 model_output_masked 扁平化之后经过全连接层
     :param model_output_masked: 模型输出后, 经过 mask 函数处理过的, [?, num_caps2, 16]
-    :return: [?, 28*28]
+    :return: [?, 256*256]
     """
-    n_hidden1 = 512
-    n_hidden2 = 1024
+    n_hidden1 = 1024
+    n_hidden2 = 2048
 
     # # 删掉所有大小是 1 的维度, [?, num_caps2, 16]
     # squeeze_input = tf.squeeze(model_output_masked)
 
     batch_size = np.shape(model_output_masked)[0]
 
-    # decoder_input.shape = [?, 10*16]
+    # decoder_input.shape = [?, 22*16]
     decoder_input = tf.reshape(model_output_masked, [batch_size, -1])
 
     with tf.name_scope("decoder"):
-        # tf.layers.dense 是一个全连接层, shape = [?, 512]
+        # tf.layers.dense 是一个全连接层, shape = [?, 1024]
         hidden1 = tf.layers.dense(decoder_input, n_hidden1,
                                   activation=tf.nn.relu,
                                   name="hidden1")
-        # shape = [?, 1024]
+        # shape = [?, 2048]
         hidden2 = tf.layers.dense(hidden1, n_hidden2,
                                   activation=tf.nn.relu,
                                   name="hidden2")
-        # shape = [?, 28*28]
+        # shape = [?, 256*256]
         decoder_output = tf.layers.dense(hidden2, X_size*X_size,
                                          activation=tf.nn.sigmoid,
                                          name="decoder_output")
@@ -108,11 +110,11 @@ def decoder(model_output_masked, X_size=28):
 def reconstruction_loss(decoder_output, X):
     """
     重构损失
-    :param X: 训练样本 [?, 28, 28, 1]
-    :param decoder_output: [?, 28*28]
+    :param X: 训练样本 [?, 256, 256, 1]
+    :param decoder_output: [?, 256*256]
     :return:
     """
-    # size 应该等于 28
+    # size 应该等于 256
     size = np.shape(X)[1]
     # X 扁平化, shape = [?, 28*28]
     X_flat = tf.reshape(X, [-1, size * size], name="X_flat")
@@ -128,14 +130,14 @@ def reconstruction_loss(decoder_output, X):
 def my_loss(X, y, y_, model_out, alpha=0.0005):
     """
     计算最终损失, 汇总训练模块的 tensorflow 图的入口
-    :param model_out: model 的输出, 类似于 logitics 值
-    :param y_: model 的输出,预测值
-    :param y: 真实值
-    :param X: 训练数据
+    :param model_out: model 的输出, 类似于 logitics 值 [?, 22, 16]
+    :param y_: model 的输出,预测值 [?, ]
+    :param y: 真实值 [?, ]
+    :param X: 训练数据 [?, 256, 256, 1]
     :param alpha:
     :return: 最终损失 [?, 1]
     """
-    # X = np.reshape(X, [None, 28, 28, 1])
+    # X = np.reshape(X, [None, 256, 256, 1])
     # y = tf.arg_max(y, dimension=1)
 
     X_size = np.shape(X)[1]
