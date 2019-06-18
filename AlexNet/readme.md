@@ -1,5 +1,7 @@
 ﻿# PracticeOnTensorflow
 
+[![996.icu](https://img.shields.io/badge/link-996.icu-red.svg)](https://996.icu)
+
 Tensorflow 练习Demo
 
 by：爱斌AI实验室
