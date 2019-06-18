@@ -9,5 +9,6 @@ __pycache__/*
 AlexNet/model_save/*
 AlexNet/mnist_test/MNIST_data/*
 AlexNet/test_data/*
+AlexNet/train_data/*
 GAN/out/*
 MyCapsuleNet/MNIST_data/*
