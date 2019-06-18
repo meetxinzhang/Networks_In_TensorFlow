@@ -3,8 +3,11 @@ __pycache__/*
 *.pyc
 *.csv
 *.gz
-CNN_AlexNet/model_save/*
-CNN_AlexNet/mnist_test/MNIST_data/*
-CNN_AlexNet/out/*
+*.jpg
+*.png
+
+AlexNet/model_save/*
+AlexNet/mnist_test/MNIST_data/*
+AlexNet/test_data/*
 GAN/out/*
-CapsuleNet/results/*
+MyCapsuleNet/MNIST_data/*

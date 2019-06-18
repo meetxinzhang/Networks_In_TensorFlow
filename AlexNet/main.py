@@ -4,7 +4,7 @@
 """
 import numpy as np
 import tensorflow as tf
-from CNN_AlexNet import training_graph as tg, args_manager as am, input_local_data as ild, caffe_classes
+from AlexNet import training_graph as tg, args_manager as am, input_local_data as ild, caffe_classes
 import cv2
 
 session = tf.InteractiveSession()

@@ -2,7 +2,7 @@
 训练与评估类
 构建 TensorFlow 数据流图
 """
-from CNN_AlexNet import model
+from AlexNet import model
 import tensorflow as tf
 
 
