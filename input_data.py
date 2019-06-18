@@ -6,13 +6,28 @@ from class_names import class_names
 
 
 class input_data(object):
+    """
+    batch 产生器
+    next_batch() 函数应在训练步骤里调用，每次返回一个 batch，训练的 batch 输送完成后自动输送测试的 batch.
+    本地数据格式：
+        file_dir/class_name/*.jpg or png .e.g
+        class_name 应在 class_name.py 文件里标记
+    """
 
     def __init__(self, file_dir, height, width, num_class=4):
+        """
+        除了 test_rate ，此处不要改动，除非新增变量
+        :param file_dir: 数据文件夹
+        :param height: 高
+        :param width: 宽
+        :param num_class: 类别数目
+        """
         self.file_dir = file_dir
         self.training = True
-        self.epoch_index = 1  # epoch次数指针，训练从1开始
-        self.file_point = 0  # 第0个epoch表示测试集
+        self.epoch_index = 1  # epoch次数指针，训练从1开，训练完后自动变为0，表示测试
+        self.file_point = 0
 
+        self.test_rate = 0.3  # 表示随机划分的测试数据占的比例
         self.num_class = num_class
         self.height = height
         self.width = width
@@ -40,7 +55,7 @@ class input_data(object):
         lab_list = list(temp[:, 1])
 
         n_total = len(filenames_list)
-        n_test = int(n_total*0.1)
+        n_test = int(n_total*self.test_rate)
 
         test_fnames = filenames_list[0:n_test]
         test_labs = lab_list[0:n_test]

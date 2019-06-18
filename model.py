@@ -49,6 +49,8 @@ class MyModel(tf.keras.Model):
                                          kernel_initializer=tf.keras.initializers.he_normal(),
                                          bias_initializer=tf.constant_initializer)
 
+        self.resnet = tf.keras.applications.resnet50.ResNet50()
+
     def call(self, inputs, is_training=True, **kwargs):
         """
         :param **kwargs:
