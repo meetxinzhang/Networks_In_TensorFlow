@@ -113,14 +113,17 @@ class input_data(object):
                 self.file_point += 1
                 end += 1
                 continue
+            except OSError:
+                print('OSError', imagePath)
+                self.file_point += 1
+                end += 1
+                continue
             except MyException as e:
                 # print(e.args)
                 self.file_point += 1
                 end += 1
                 continue
 
-            # 添加颜色通道
-            # features = np.expand_dims(features, axis=0)
             x_data.append(features)  # (image.data, dtype='float32')
 
             # ##########标签##############
@@ -135,6 +138,5 @@ class input_data(object):
 
             self.file_point += 1
 
-        # print(np.shape(np.asarray(x_data, dtype=np.float32)))
         return np.asarray(x_data, dtype=np.float32), np.asarray(y_data, dtype=np.int32), self.epoch_index
 
